@@ -10,12 +10,14 @@ Definition of the baseline (part of what a score means):
      where the model accepts it (see TEMPERATURE_OK). The model replies with one SQLite SELECT
      in a ```sql block.
   2. The SQL runs read-only (mode=ro, query_only, STATEMENT_LIMIT_S wall limit) and its result is
-     converted per answer_format: number = one row, one numeric column; names = first column as
-     strings. NULL CONVENTION: a result of exactly one row whose only (number) or first (names)
-     column is NULL is the answer null, meaning "the database does not contain this fact". Zero
-     rows is not an answer: it is a failed query and gets the repair turn. Rounding is whatever the
-     question asks for; the prompt tells the model to apply it in the SQL.
-  3. REPAIR TURN. If step 2 fails (SQL error, timeout, zero rows, or a result that cannot be converted) the
+     converted per answer_format: number = one row, one non-NULL numeric column; names = first column
+     as non-NULL strings. ABSTENTION: a result of exactly one row whose only (number) or first (names)
+     column is the string 'NOT_IN_DATABASE' is the answer null, meaning "the database does not
+     contain this fact". Abstaining takes that explicit choice: a NULL value or zero rows is a failed
+     query and gets the repair turn, so a lookup that silently matches nothing is never an
+     abstention. Rounding is whatever the question asks for; the prompt tells the model to apply it
+     in the SQL.
+  3. REPAIR TURN. If step 2 fails (SQL error, timeout, zero rows, NULL, or a result that cannot be converted) the
      model gets exactly one more turn that quotes the error text and asks for a corrected query.
      A second failure is final. No other retries, no self-consistency, no schema exploration.
 Failure statuses: a transport/API failure is runtime_failure; a model that never yields a usable
@@ -38,6 +40,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 ADAPTER_VERSION = "llm-sql-2"
+ABSTAIN = "NOT_IN_DATABASE"
 STATEMENT_LIMIT_S = 30
 TOP_K = 15
 DOC_CHARS = 500
@@ -70,7 +73,7 @@ USER = """Database schema:
 Question: {question}
 
 Answer format: {format_hint}
-If the database does not contain the fact the question asks for, return exactly one row with a single NULL (SELECT NULL); that answer means "not in the database". If the question asks for rounding, apply it in the query (for example ROUND(x, 4))."""
+If the database does not contain the fact the question asks for, return exactly one row with the single string 'NOT_IN_DATABASE' (SELECT 'NOT_IN_DATABASE'); only that answer means "not in the database". A query that returns NULL or no rows is a failed query, not an answer. If the question asks for rounding, apply it in the query (for example ROUND(x, 4))."""
 DEFINITIONS = """
 Relevant US-GAAP tag definitions (tag: label - documentation):
 {lines}
@@ -174,15 +177,18 @@ def execute(db, sql, fmt):
         rows = conn.execute(sql).fetchall()
     finally:
         conn.close()
-    if not rows:
-        raise ValueError("query returned no rows; if the fact is not in the database, return SELECT NULL")
-    if fmt == "number":
-        if len(rows) != 1 or len(rows[0]) != 1 or not isinstance(rows[0][0], (int, float, type(None))):
-            raise ValueError(f"number answer needs one row with one numeric column; got {len(rows)} row(s)")
-        return None if rows[0][0] is None else float(rows[0][0])
-    if len(rows) == 1 and rows[0][0] is None:
+    if len(rows) == 1 and rows[0][0] == ABSTAIN:
         return None
-    return [str(r[0]) for r in rows if r[0] is not None]
+    hint = f"if the database does not contain the fact, return SELECT '{ABSTAIN}'"
+    if not rows:
+        raise ValueError(f"query returned no rows; {hint}")
+    if any(r[0] is None for r in rows):
+        raise ValueError(f"query returned NULL, which is not an answer; {hint}")
+    if fmt == "number":
+        if len(rows) != 1 or len(rows[0]) != 1 or not isinstance(rows[0][0], (int, float)):
+            raise ValueError(f"number answer needs one row with one numeric column; got {len(rows)} row(s)")
+        return float(rows[0][0])
+    return [str(r[0]) for r in rows]
 
 
 def run_task(req, usage):
