@@ -1,0 +1,8 @@
+name = "Onto A"
+kind = "platform"
+claim_source = "vendor documentation"
+disclosures = ["fixture: synthetic vendor"]
+
+[claims]
+"task:querying" = "supported"
+"task:mapping" = "unsupported"

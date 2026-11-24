@@ -1,0 +1,11 @@
+method_id = "ontoA"
+method_version = "1.0"
+model_id = "native-model"
+model_version = "9"
+ladder_level = "auto_ontology"
+information_access = ["schema", "docs"]
+adapter_command = ["python3", "adapters/fake.py"]
+adapter_version = "fake-1"
+versions_immutable = false
+
+[settings]

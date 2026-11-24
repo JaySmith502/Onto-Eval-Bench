@@ -1,0 +1,11 @@
+method_id = "baseline"
+method_version = "1.0"
+model_id = "m"
+model_version = "1"
+ladder_level = "schema_only"
+information_access = ["schema"]
+adapter_command = ["python3", "adapters/fake.py"]
+adapter_version = "fake-1"
+
+[settings]
+wrong_tasks = "t1,t2,t3,t4,t5"

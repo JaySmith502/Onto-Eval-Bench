@@ -1,0 +1,14 @@
+method_id = "ontoA"
+method_version = "1.0"
+model_id = "m"
+model_version = "1"
+ladder_level = "auto_ontology"
+information_access = ["schema", "docs"]
+adapter_command = ["python3", "adapters/fake.py"]
+adapter_version = "fake-1"
+
+[settings]
+wrong_tasks = "t2"
+sleep_tasks = "t4"
+sleep_s = "3"
+fail_tasks = "t5"

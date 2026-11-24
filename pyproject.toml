@@ -1,0 +1,16 @@
+[project]
+name = "observatory"
+version = "0.1.0"
+description = "Ontology Evaluation Observatory: evidence-backed evaluation of ontology platforms and methods"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+obs = "observatory.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
