@@ -3,7 +3,9 @@
 One executable, two ladder levels, chosen by the information_access that `build` receives:
   ["schema"]                  -> baseline-schema:  schema.sql only.
   ["schema", "definitions"]   -> baseline-context: schema.sql plus the 15 definitions whose
-                                 keyword overlap with the question is highest.
+                                 keyword overlap with the question is highest, and, when the package
+                                 ships dimensions.json (axis and member labels), the 15 labels whose
+                                 overlap is highest. A filer's own label also matches on the filer's name.
 
 Definition of the baseline (part of what a score means):
   1. One Messages API call: system prompt + context + question + answer_format, temperature 0
@@ -39,7 +41,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
-ADAPTER_VERSION = "llm-sql-2"
+ADAPTER_VERSION = "llm-sql-3"
 ABSTAIN = "NOT_IN_DATABASE"
 STATEMENT_LIMIT_S = 30
 TOP_K = 15
@@ -78,6 +80,10 @@ DEFINITIONS = """
 Relevant US-GAAP tag definitions (tag: label - documentation):
 {lines}
 """
+DIMENSIONS = """
+Relevant axis and member labels (dim.axis or dim.member name: label - documentation):
+{lines}
+"""
 FORMAT_HINT = {
     "number": "the query must return exactly one row with one numeric column, in the units stored in num.value.",
     "names": "the query must return company names exactly as stored in sub.name, as the first column, one per row.",
@@ -111,14 +117,25 @@ def build(req):
             raise Fail("runtime_failure", f"build input {need} missing")
     shutil.copyfile(by_name["fsds.sqlite"], state / "fsds.sqlite")
     shutil.copyfile(by_name["schema.sql"], state / "schema.sql")
-    (state / "definitions_index.json").unlink(missing_ok=True)
+    for f in ("definitions_index.json", "dimensions_index.json"):
+        (state / f).unlink(missing_ok=True)
+    with_dims = with_defs and "dimensions.json" in by_name
     if with_defs:
         defs = json.loads(by_name["definitions.json"].read_text())
-        index = {t: {"label": d.get("label") or "", "doc": d.get("doc") or "",
-                     "tokens": sorted(tokens(f"{t} {d.get('label') or ''} {d.get('doc') or ''}"))}
-                 for t, d in defs.items()}
-        (state / "definitions_index.json").write_text(json.dumps(index))
-    (state / "context.json").write_text(json.dumps({"definitions": with_defs}))
+        (state / "definitions_index.json").write_text(json.dumps({t: entry(t, d) for t, d in defs.items()}))
+    if with_dims:
+        dims = json.loads(by_name["dimensions.json"].read_text())
+        index = {key.replace(":", " ", 1): entry(key.split(":", 1)[1], d) for key, d in dims["standard"].items()}
+        for f in dims["filer"].values():
+            for key, d in f["labels"].items():
+                index[f"{key.replace(':', ' ', 1)} ({f['name']})"] = entry(key.split(":", 1)[1], d, f["name"])
+        (state / "dimensions_index.json").write_text(json.dumps(index))
+    (state / "context.json").write_text(json.dumps({"definitions": with_defs, "dimensions": with_dims}))
+
+
+def entry(name, d, extra=""):
+    label, doc = d.get("label") or "", d.get("doc") or ""
+    return {"label": label, "doc": doc, "tokens": sorted(tokens(f"{name} {label} {doc} {extra}"))}
 
 
 def retrieve(index, question):
@@ -202,6 +219,9 @@ def run_task(req, usage):
     if ctx["definitions"]:
         hits = retrieve(json.loads((state / "definitions_index.json").read_text()), inp["question"])
         defs = DEFINITIONS.format(lines="\n".join(f"- {t}: {d['label']} - {d['doc'][:DOC_CHARS]}" for t, d in hits))
+    if ctx.get("dimensions"):
+        hits = retrieve(json.loads((state / "dimensions_index.json").read_text()), inp["question"])
+        defs += DIMENSIONS.format(lines="\n".join(f"- {t}: {d['label']} - {d['doc'][:DOC_CHARS]}" for t, d in hits))
     prompt = USER.format(schema=(state / "schema.sql").read_text(), definitions=defs,
                          question=inp["question"], format_hint=FORMAT_HINT[fmt])
     messages = [{"role": "user", "content": prompt}]
