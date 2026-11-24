@@ -1,0 +1,3 @@
+name = "Schema-only baseline"
+kind = "baseline"
+claim_source = "observatory"

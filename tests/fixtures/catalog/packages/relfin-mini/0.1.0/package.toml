@@ -1,0 +1,34 @@
+suite = "frozen_core"
+provenance = "synthetic fixture"
+usage_rights = "cc0"
+taxonomy_version = "1"
+controlled_model = ["m", "1"]
+permitted_tools = []
+external_access = false
+human_assistance = "none"
+limitations = ["tiny synthetic package"]
+
+[[data]]
+path = "data/snapshot.json"
+sha256 = "72bc3dd980fd23ddaafdee26ac4a90a52ab65e1344b7100c6e828e86b3c9a612"
+
+[budget.controlled]
+max_usd = 1.0
+build_timeout_s = 10
+task_timeout_s = 1
+memory_mb = 2048
+max_attempts = 2
+
+[budget.native]
+max_usd = 1.0
+build_timeout_s = 10
+task_timeout_s = 5
+memory_mb = 2048
+max_attempts = 2
+
+[analysis]
+min_meaningful_diff = 0.05
+bootstrap_resamples = 500
+seed = 7
+min_groups = 2
+multiplicity = "holm"

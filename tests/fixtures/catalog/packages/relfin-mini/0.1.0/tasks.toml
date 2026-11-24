@@ -1,0 +1,91 @@
+[[task]]
+task_id = "c1"
+group = "g1"
+tracks = ["semantic_task"]
+tags = ["task:querying", "domain:finance"]
+split = "config"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/c1.json"
+reference_ref = "data/ref/c1.json"
+check = "checks/eq.py:check"
+
+[[task]]
+task_id = "t1"
+group = "g1"
+tracks = ["semantic_task"]
+tags = ["task:mapping"]
+split = "heldout"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/t1.json"
+reference_ref = "data/ref/t1.json"
+check = "checks/eq.py:check"
+
+[[task]]
+task_id = "t2"
+group = "g1"
+tracks = ["semantic_task"]
+tags = ["task:querying", "domain:finance"]
+split = "heldout"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/t2.json"
+reference_ref = "data/ref/t2.json"
+check = "checks/eq.py:check"
+
+[[task]]
+task_id = "t3"
+group = "g2"
+tracks = ["semantic_task"]
+tags = ["task:mapping"]
+split = "heldout"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/t3.json"
+reference_ref = "data/ref/t3.json"
+check = "checks/eq.py:check"
+
+[[task]]
+task_id = "t4"
+group = "g2"
+tracks = ["semantic_task"]
+tags = ["task:querying", "domain:finance"]
+split = "heldout"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/t4.json"
+reference_ref = "data/ref/t4.json"
+check = "checks/eq.py:check"
+
+[[task]]
+task_id = "t5"
+group = "g3"
+tracks = ["semantic_task"]
+tags = ["task:mapping"]
+split = "heldout"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/t5.json"
+reference_ref = "data/ref/t5.json"
+check = "checks/eq.py:check"
+
+[[task]]
+task_id = "t6"
+group = "g3"
+tracks = ["semantic_task"]
+tags = ["task:querying", "domain:finance"]
+split = "heldout"
+disclosure = "restricted"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/t6.json"
+reference_ref = "data/ref/t6.json"
+check = "checks/eq.py:check"
+
