@@ -1,0 +1,5 @@
+{
+ "answer": 1705000000.0,
+ "answer_format": "number",
+ "sql": "SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'CARDINAL HEALTH INC' AND s.form = '10-K' AND s.period = 20260630 AND n.tag = 'ProfitLoss' AND n.ddate = 20260630 AND n.qtrs = 4 AND n.uom = 'USD'"
+}

@@ -1,0 +1,5 @@
+{
+ "answer": 12,
+ "answer_format": "number",
+ "sql": "SELECT COUNT(*) FROM sub s WHERE s.form = '10-Q' AND s.period = 20260630 AND s.sic = 4911 AND EXISTS (SELECT 1 FROM dnum n JOIN dim d ON d.fact_id = n.fact_id WHERE n.adsh = s.adsh AND d.axis = 'LegalEntity')"
+}

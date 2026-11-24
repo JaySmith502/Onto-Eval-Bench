@@ -1,0 +1,8 @@
+{
+ "answer": 0.4268,
+ "answer_format": "number",
+ "sql": "SELECT ROUND((SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'FEDEX CORP' AND s.form = '10-K' AND s.period = 20260531 AND n.tag = 'PaymentsToAcquireProductiveAssets' AND n.ddate = 20260531 AND n.qtrs = 4 AND n.uom = 'USD') * 1.0 / (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'FEDEX CORP' AND s.form = '10-K' AND s.period = 20260531 AND n.tag = 'NetCashProvidedByUsedInOperatingActivities' AND n.ddate = 20260531 AND n.qtrs = 4 AND n.uom = 'USD'), 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}

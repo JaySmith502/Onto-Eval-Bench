@@ -1,0 +1,7 @@
+{
+ "answer": [
+  "STRATEGY INC"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num c ON c.adsh = s.adsh AND c.tag = 'EarningsPerShareDiluted' AND c.ddate = 20260630 AND c.qtrs = 1 AND c.uom = 'USD' JOIN num p ON p.adsh = s.adsh AND p.tag = 'EarningsPerShareDiluted' AND p.ddate = 20250630 AND p.qtrs = 1 AND p.uom = 'USD' WHERE s.form = '10-Q' AND s.period = 20260630 ORDER BY c.value - p.value LIMIT 1"
+}

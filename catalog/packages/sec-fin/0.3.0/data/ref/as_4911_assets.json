@@ -1,0 +1,5 @@
+{
+ "answer": 1297962361000.0,
+ "answer_format": "number",
+ "sql": "SELECT SUM(n.value) FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period = 20260630 AND n.ddate = 20260630 AND n.uom = 'USD' AND s.sic = 4911 AND n.tag = 'Assets' AND n.qtrs = 0"
+}

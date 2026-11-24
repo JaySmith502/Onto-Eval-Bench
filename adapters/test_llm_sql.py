@@ -16,6 +16,12 @@ SCHEMA = "CREATE TABLE sub(adsh TEXT, name TEXT);\nCREATE TABLE num(adsh TEXT, t
 DEFS = {"Revenues": {"label": "Revenues", "doc": "Amount of revenue recognized from goods sold."},
         "AssetsCurrent": {"label": "Assets, Current", "doc": "Sum of current assets."},
         "Zebra": {"label": "Zebra Stripes", "doc": "Unrelated."}}
+DIMS = {"standard": {"axis:BusinessSegments": {"element": "StatementBusinessSegmentsAxis", "label": "Segments [Axis]",
+                                               "doc": "Information by business segments."}},
+        "filer": {"a": {"name": "Acme Corp", "labels": {"member:CloudUnit": {"element": "CloudUnitMember",
+                                                                              "label": "Intelligent Cloud [Member]", "doc": ""}}},
+                  "b": {"name": "Beta  Inc", "labels": {"member:Widgets": {"element": "WidgetsMember",
+                                                                            "label": "Widgets [Member]", "doc": ""}}}}}
 
 
 def sql_reply(sql):
@@ -65,6 +71,7 @@ class AdapterTest(unittest.TestCase):
         db.close()
         (self.inputs / "schema.sql").write_text(SCHEMA)
         (self.inputs / "definitions.json").write_text(json.dumps(DEFS))
+        (self.inputs / "dimensions.json").write_text(json.dumps(DIMS))
         self.state = self.tmp / "state"
 
     def call(self, verb, req, stub=None):
@@ -77,7 +84,8 @@ class AdapterTest(unittest.TestCase):
 
     def build(self, access):
         r = self.call("build", {"state_dir": str(self.state), "model": MODEL, "information_access": access,
-                                "inputs": [str(self.inputs / n) for n in ("fsds.sqlite", "schema.sql", "definitions.json")],
+                                "inputs": [str(self.inputs / n) for n in ("fsds.sqlite", "schema.sql", "definitions.json",
+                                                                          "dimensions.json")],
                                 "settings": {}})
         self.assertEqual(r["status"], "completed")
 
@@ -104,6 +112,17 @@ class AdapterTest(unittest.TestCase):
         prompt = stub.requests[0]["messages"][0]["content"]
         self.assertIn("Amount of revenue recognized", prompt)
         self.assertNotIn("Unrelated.", prompt)
+
+    def test_dimension_labels_reach_the_context_baseline_only(self):
+        self.build(["schema"])
+        _, stub = self.run_task([(200, sql_reply("SELECT 1"))], question="Acme's intelligent cloud revenues by business segments?")
+        self.assertNotIn("Intelligent Cloud", stub.requests[0]["messages"][0]["content"])
+        self.build(["schema", "definitions"])
+        _, stub = self.run_task([(200, sql_reply("SELECT 1"))], question="Acme's intelligent cloud revenues by business segments?")
+        prompt = stub.requests[0]["messages"][0]["content"]
+        self.assertIn("- member CloudUnit (Acme Corp): Intelligent Cloud [Member]", prompt)
+        self.assertIn("- axis BusinessSegments: Segments [Axis]", prompt)
+        self.assertNotIn("Widgets", prompt)
 
     def test_repair_turn_once(self):
         self.build(["schema"])
@@ -173,11 +192,21 @@ class AdapterTest(unittest.TestCase):
         self.build(["schema"])
         r, stub = self.run_task([(200, sql_reply("SELECT 1"))])
         self.assertEqual(r["model_used"], MODEL)
-        self.assertEqual(r["adapter_version"], "llm-sql-2")
+        self.assertEqual(r["adapter_version"], "llm-sql-3")
         c = r["cost"]
         self.assertEqual((c["tokens_in"], c["tokens_out"], c["measured"]), (1000, 200, True))
         self.assertAlmostEqual(c["usd"], 1000 * 0.10 / 1e6 + 200 * 0.50 / 1e6)
         self.assertNotIn("temperature", stub.requests[0])
+        self.assertEqual(stub.requests[0]["model"], MODEL[0])
+
+    def test_native_mode_takes_model_from_settings(self):
+        self.build(["schema"])
+        stub = Stub([(200, sql_reply("SELECT 1"))])
+        self.addCleanup(stub.close)
+        r = self.call("run-task", {"state_dir": str(self.state), "task_id": "t", "settings": {"model_id": MODEL[0], "model_version": MODEL[1]},
+                                   "input": {"question": "q", "answer_format": "number"}}, stub)
+        self.assertEqual(r["status"], "completed")
+        self.assertEqual(r["model_used"], MODEL)
         self.assertEqual(stub.requests[0]["model"], MODEL[0])
 
     def test_malformed_reply_is_invalid_output(self):

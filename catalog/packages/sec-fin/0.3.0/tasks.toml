@@ -1,0 +1,1401 @@
+version = "1"
+
+[[task]]
+task_id = "lk_msft_rd_fy"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/lk_msft_rd_fy.json"
+reference_ref = "data/ref/lk_msft_rd_fy.json"
+check = "checks/answer.py:check"
+note = "One R&D tag; the 10-K's fiscal-year column is qtrs = 4."
+
+[[task]]
+task_id = "lk_cisco_goodwill_prior"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/lk_cisco_goodwill_prior.json"
+reference_ref = "data/ref/lk_cisco_goodwill_prior.json"
+check = "checks/answer.py:check"
+note = "The 10-K's comparative balance sheet date."
+
+[[task]]
+task_id = "lk_pg_net_earnings_parent"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/lk_pg_net_earnings_parent.json"
+reference_ref = "data/ref/lk_pg_net_earnings_parent.json"
+check = "checks/answer.py:check"
+note = "NetIncomeLoss (16.05B); ProfitLoss (16.14B) includes noncontrolling interests."
+
+[[task]]
+task_id = "lk_cardinal_equity"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/lk_cardinal_equity.json"
+reference_ref = "data/ref/lk_cardinal_equity.json"
+check = "checks/answer.py:check"
+note = "One StockholdersEquity instant at 2026-06-30 on the balance sheet; it is a deficit."
+
+[[task]]
+task_id = "lk_cardinal_nci_ni"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/lk_cardinal_nci_ni.json"
+reference_ref = "data/ref/lk_cardinal_nci_ni.json"
+check = "checks/answer.py:check"
+note = "The fiscal-2026 figure is a 9M loss; fiscal 2025 was an 8M gain."
+
+[[task]]
+task_id = "lk_msft_cash_fy2025"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/lk_msft_cash_fy2025.json"
+reference_ref = "data/ref/lk_msft_cash_fy2025.json"
+check = "checks/answer.py:check"
+note = "Microsoft's fiscal year 2025 ended 2025-06-30, the comparative instant in its fiscal-2026 10-K."
+
+[[task]]
+task_id = "as_6022_count"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/as_6022_count.json"
+reference_ref = "data/ref/as_6022_count.json"
+check = "checks/answer.py:check"
+note = "A count of sub rows."
+
+[[task]]
+task_id = "as_4911_assets"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/as_4911_assets.json"
+reference_ref = "data/ref/as_4911_assets.json"
+check = "checks/answer.py:check"
+note = "Consolidated Assets from num; co-registrant subsidiaries' assets are in dnum (axis LegalEntity) and not counted."
+
+[[task]]
+task_id = "as_2834_avg_assets"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_2834_avg_assets.json"
+reference_ref = "data/ref/as_2834_avg_assets.json"
+check = "checks/answer.py:check"
+note = "All eight SIC 2834 filings report consolidated Assets at 2026-06-30 (OPKO's small balance pulls the mean down)."
+
+[[task]]
+task_id = "as_6021_assets"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_6021_assets.json"
+reference_ref = "data/ref/as_6021_assets.json"
+check = "checks/answer.py:check"
+note = "All 23 SIC 6021 filings report consolidated Assets at 2026-06-30. Total deposits were avoided: Truist reports only interest-bearing and noninterest-bearing deposits, no total."
+
+[[task]]
+task_id = "as_7370_rd"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_7370_rd.json"
+reference_ref = "data/ref/as_7370_rd.json"
+check = "checks/answer.py:check"
+note = "Meta, Alphabet and SpaceX each report one consolidated three-month R&D fact."
+
+[[task]]
+task_id = "as_4911_coregistrants"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/as_4911_coregistrants.json"
+reference_ref = "data/ref/as_4911_coregistrants.json"
+check = "checks/answer.py:check"
+note = "Counts filings with any LegalEntity fact; the axis also holds parents, VIEs and aggregates, but each of the 12 filings has a genuine subsidiary member."
+
+[[task]]
+task_id = "un_pg_rd"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/un_pg_rd.json"
+reference_ref = "data/ref/un_pg_rd.json"
+check = "checks/answer.py:check"
+note = "P&G's filing has no research and development tag, dimensional or not."
+
+[[task]]
+task_id = "un_fedex_inventory"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/un_fedex_inventory.json"
+reference_ref = "data/ref/un_fedex_inventory.json"
+check = "checks/answer.py:check"
+note = "FedEx's filing has no inventory tag of any kind."
+
+[[task]]
+task_id = "un_cisco_q4_revenue"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/un_cisco_q4_revenue.json"
+reference_ref = "data/ref/un_cisco_q4_revenue.json"
+check = "checks/answer.py:check"
+note = "Cisco's 10-K has fiscal-year columns only: no qtrs = 1 fact of any tag, in num or dnum."
+
+[[task]]
+task_id = "un_meta_rl_europe"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/un_meta_rl_europe.json"
+reference_ref = "data/ref/un_meta_rl_europe.json"
+check = "checks/answer.py:check"
+note = "Meta reports Reality Labs facts with the segment as the only pair; geography is reported for the whole company."
+
+[[task]]
+task_id = "un_apple_germany"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/un_apple_germany.json"
+reference_ref = "data/ref/un_apple_germany.json"
+check = "checks/answer.py:check"
+note = "Apple has no Geographical axis at all; its geographic segments (Europe, Americas, ...) are the finest breakdown."
+
+[[task]]
+task_id = "un_nvidia_graphics_taiwan"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_nvidia_graphics_taiwan.json"
+reference_ref = "data/ref/un_nvidia_graphics_taiwan.json"
+check = "checks/answer.py:check"
+note = "NVIDIA reports revenue by segment and by country separately, never crossed."
+
+[[task]]
+task_id = "un_msft_azure"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_msft_azure.json"
+reference_ref = "data/ref/un_msft_azure.json"
+check = "checks/answer.py:check"
+note = "No member names Azure; Azure sits inside server products and cloud services and the Microsoft Cloud, which both include other offerings."
+
+[[task]]
+task_id = "un_apple_us_net_sales"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_apple_us_net_sales.json"
+reference_ref = "data/ref/un_apple_us_net_sales.json"
+check = "checks/answer.py:check"
+note = "Apple's 10-Q reports an Americas segment, which also covers Canada and Latin America, and no US figure."
+
+[[task]]
+task_id = "un_amazon_us_net_sales"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_amazon_us_net_sales.json"
+reference_ref = "data/ref/un_amazon_us_net_sales.json"
+check = "checks/answer.py:check"
+note = "Amazon's 10-Q has no Geographical axis; its North America segment also covers Canada and Mexico."
+
+[[task]]
+task_id = "pc_msft_capex_growth"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/pc_msft_capex_growth.json"
+reference_ref = "data/ref/pc_msft_capex_growth.json"
+check = "checks/answer.py:check"
+note = "Both fiscal-year columns of the 10-K."
+
+[[task]]
+task_id = "pc_cisco_inventory_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_cisco_inventory_change.json"
+reference_ref = "data/ref/pc_cisco_inventory_change.json"
+check = "checks/answer.py:check"
+note = "Both balance-sheet instants of the 10-K."
+
+[[task]]
+task_id = "pc_fedex_cash_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_fedex_cash_change.json"
+reference_ref = "data/ref/pc_fedex_cash_change.json"
+check = "checks/answer.py:check"
+note = "FedEx's fiscal year ends in May."
+
+[[task]]
+task_id = "pc_pg_opinc_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_pg_opinc_change.json"
+reference_ref = "data/ref/pc_pg_opinc_change.json"
+check = "checks/answer.py:check"
+note = "Operating income fell, so the answer is negative."
+
+[[task]]
+task_id = "pc_cardinal_ocf_growth"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/pc_cardinal_ocf_growth.json"
+reference_ref = "data/ref/pc_cardinal_ocf_growth.json"
+check = "checks/answer.py:check"
+note = "Cardinal's fiscal years end in June: fiscal 2026 is the year ended 2026-06-30."
+
+[[task]]
+task_id = "pc_cisco_revenue_growth"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/pc_cisco_revenue_growth.json"
+reference_ref = "data/ref/pc_cisco_revenue_growth.json"
+check = "checks/answer.py:check"
+note = "Cisco's fiscal years end in late July: fiscal 2026 is the year ended 2026-07-31."
+
+[[task]]
+task_id = "ra_msft_net_margin"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ra_msft_net_margin.json"
+reference_ref = "data/ref/ra_msft_net_margin.json"
+check = "checks/answer.py:check"
+note = "Fiscal-year columns (qtrs = 4)."
+
+[[task]]
+task_id = "ra_cisco_current_ratio"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_cisco_current_ratio.json"
+reference_ref = "data/ref/ra_cisco_current_ratio.json"
+check = "checks/answer.py:check"
+note = "Both instants at the 10-K's balance sheet date."
+
+[[task]]
+task_id = "ra_fedex_capex_to_ocf"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_fedex_capex_to_ocf.json"
+reference_ref = "data/ref/ra_fedex_capex_to_ocf.json"
+check = "checks/answer.py:check"
+note = "FedEx tags capital expenditures as PaymentsToAcquireProductiveAssets; it has no property-and-equipment payment tag."
+
+[[task]]
+task_id = "ra_pg_payout"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_pg_payout.json"
+reference_ref = "data/ref/ra_pg_payout.json"
+check = "checks/answer.py:check"
+note = "Dividends paid is the one cash-flow dividend tag; the denominator excludes noncontrolling interests."
+
+[[task]]
+task_id = "ra_adp_rd_intensity"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_adp_rd_intensity.json"
+reference_ref = "data/ref/ra_adp_rd_intensity.json"
+check = "checks/answer.py:check"
+note = "One R&D and one revenue tag, fiscal-year columns."
+
+[[task]]
+task_id = "ra_cardinal_inventory_turnover"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ra_cardinal_inventory_turnover.json"
+reference_ref = "data/ref/ra_cardinal_inventory_turnover.json"
+check = "checks/answer.py:check"
+note = "One cost-of-sales tag for the fiscal year over two inventory instants."
+
+[[task]]
+task_id = "ra_msft_tax_rate"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ra_msft_tax_rate.json"
+reference_ref = "data/ref/ra_msft_tax_rate.json"
+check = "checks/answer.py:check"
+note = "One pre-tax income tag; fiscal-year columns."
+
+[[task]]
+task_id = "ra_cisco_roe"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ra_cisco_roe.json"
+reference_ref = "data/ref/ra_cisco_roe.json"
+check = "checks/answer.py:check"
+note = "Cisco has no noncontrolling interests; equity at the two balance sheet dates."
+
+[[task]]
+task_id = "ar_equity_top3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ar_equity_top3.json"
+reference_ref = "data/ref/ar_equity_top3.json"
+check = "checks/answer.py:check"
+note = "Third (Amazon, 551.6B) and fourth (JPMorgan, 374.6B) are far apart; filers that report only total equity including noncontrolling interests are all below 127B. Cash was avoided: Citigroup, JPMorgan and Bank of America report cash only together with restricted cash."
+
+[[task]]
+task_id = "ar_rd_top1"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ar_rd_top1.json"
+reference_ref = "data/ref/ar_rd_top1.json"
+check = "checks/answer.py:check"
+note = "Meta 21.66B, Alphabet 18.22B."
+
+[[task]]
+task_id = "ar_goodwill_top5"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ar_goodwill_top5.json"
+reference_ref = "data/ref/ar_goodwill_top5.json"
+check = "checks/answer.py:check"
+note = "Fifth (IBM, 74.60B) and sixth (Pfizer, 71.42B) are 3.2B apart; segment goodwill facts are in dnum. Inventories were avoided: Boeing reports inventory net of customer advances (88.4B) under a different tag."
+
+[[task]]
+task_id = "ar_capex_top3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_capex_top3.json"
+reference_ref = "data/ref/ar_capex_top3.json"
+check = "checks/answer.py:check"
+note = "No filing reports both tags. Amazon (98.4B) uses PaymentsToAcquireProductiveAssets; Alphabet 80.6B, Meta 49.1B, then SpaceX 28.5B."
+
+[[task]]
+task_id = "ar_pfizer_goodwill_rank"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ar_pfizer_goodwill_rank.json"
+reference_ref = "data/ref/ar_pfizer_goodwill_rank.json"
+check = "checks/answer.py:check"
+note = "Pfizer 71.4B is sixth behind UnitedHealth, CVS, Berkshire, Disney (74.68B) and IBM (74.60B); no ties."
+
+[[task]]
+task_id = "ar_lowest_current_ratio"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_lowest_current_ratio.json"
+reference_ref = "data/ref/ar_lowest_current_ratio.json"
+check = "checks/answer.py:check"
+note = "Royal Caribbean 0.209, next American Tower 0.352; banks report no current assets and drop out."
+
+[[task]]
+task_id = "ar_eps_drop"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_eps_drop.json"
+reference_ref = "data/ref/ar_eps_drop.json"
+check = "checks/answer.py:check"
+note = "Strategy's diluted EPS fell by 57.05; next SharonAI by 20.43."
+
+[[task]]
+task_id = "ar_bank_roa_top3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_bank_roa_top3.json"
+reference_ref = "data/ref/ar_bank_roa_top3.json"
+check = "checks/answer.py:check"
+note = "Third (JPMorgan, 42.2 bp) and fourth (UMB, 38.4 bp) are apart. Truist and PNC lack NetIncomeLoss; computed from ProfitLoss they reach 27.9 and 33.1 bp, below the top three either way."
+
+[[task]]
+task_id = "di_walmart_net_sales"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "config"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_walmart_net_sales.json"
+reference_ref = "data/ref/di_walmart_net_sales.json"
+check = "checks/answer.py:check"
+note = "Net sales is RevenueFromContractWithCustomerExcludingAssessedTax; total revenues (Revenues) add membership income."
+
+[[task]]
+task_id = "di_cat_pe_external"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_cat_pe_external.json"
+reference_ref = "data/ref/di_cat_pe_external.json"
+check = "checks/answer.py:check"
+note = "External sales 6.795B, reported both with the segment alone and with the excluding-intersegment member (same value); total segment sales including intersegment are 8.238B."
+
+[[task]]
+task_id = "di_rtx_collins_total"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_rtx_collins_total.json"
+reference_ref = "data/ref/di_rtx_collins_total.json"
+check = "checks/answer.py:check"
+note = "Segment total 8.210B (with ConsolidationItems=OperatingSegments); external sales alone are 7.552B."
+
+[[task]]
+task_id = "di_cardinal_profit_incl_nci"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_cardinal_profit_incl_nci.json"
+reference_ref = "data/ref/di_cardinal_profit_incl_nci.json"
+check = "checks/answer.py:check"
+note = "ProfitLoss (1.705B) includes the -9M noncontrolling share; NetIncomeLoss is 1.714B."
+
+[[task]]
+task_id = "di_disney_entertainment_ads"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_disney_entertainment_ads.json"
+reference_ref = "data/ref/di_disney_entertainment_ads.json"
+check = "checks/answer.py:check"
+note = "Company-wide advertising is 2.829B; the Entertainment segment's is 1.625B (Sports carries the rest)."
+
+[[task]]
+task_id = "di_lilly_jardiance"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_lilly_jardiance.json"
+reference_ref = "data/ref/di_lilly_jardiance.json"
+check = "checks/answer.py:check"
+note = "The product's total is the fact with only the product pair (1.232B); the 250M fact with a second pair (TypeOfArrangement=MilestonePaymentsSalesBased) is one arrangement type, and US/non-US facts carry a Geographical pair. US 616M + non-US 615M = 1.231B (filing rounding), so a rel 1e-3 tolerance accepts that build."
+
+[[task]]
+task_id = "di_msft_product_revenue"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_msft_product_revenue.json"
+reference_ref = "data/ref/di_msft_product_revenue.json"
+check = "checks/answer.py:check"
+note = "ProductOrService=Product (64.7B) is the product/service split; the product-line members (Xbox, Windows, ...) are a different breakdown on the same axis."
+
+[[task]]
+task_id = "di_meta_foa_advertising"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_meta_foa_advertising.json"
+reference_ref = "data/ref/di_meta_foa_advertising.json"
+check = "checks/answer.py:check"
+note = "Family of Apps total revenue is 60.370B; advertising alone is 59.363B (two pairs)."
+
+[[task]]
+task_id = "cc_msft_fcf"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "config"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_msft_fcf.json"
+reference_ref = "data/ref/cc_msft_fcf.json"
+check = "checks/answer.py:check"
+note = "Both fiscal-year cash-flow facts."
+
+[[task]]
+task_id = "cc_adp_working_capital"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/cc_adp_working_capital.json"
+reference_ref = "data/ref/cc_adp_working_capital.json"
+check = "checks/answer.py:check"
+note = "Both instants include client funds, as ADP's balance sheet does."
+
+[[task]]
+task_id = "cc_cisco_shareholder_returns"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_cisco_shareholder_returns.json"
+reference_ref = "data/ref/cc_cisco_shareholder_returns.json"
+check = "checks/answer.py:check"
+note = "Both fiscal-year cash-flow facts."
+
+[[task]]
+task_id = "cc_pg_fcf_after_dividends"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_pg_fcf_after_dividends.json"
+reference_ref = "data/ref/cc_pg_fcf_after_dividends.json"
+check = "checks/answer.py:check"
+note = "Three fiscal-year cash-flow facts."
+
+[[task]]
+task_id = "cc_cisco_net_debt"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_cisco_net_debt.json"
+reference_ref = "data/ref/cc_cisco_net_debt.json"
+check = "checks/answer.py:check"
+note = "Cisco reports one current-debt (DebtCurrent) and one noncurrent-debt total."
+
+[[task]]
+task_id = "cc_fedex_ebitda"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_fedex_ebitda.json"
+reference_ref = "data/ref/cc_fedex_ebitda.json"
+check = "checks/answer.py:check"
+note = "One operating income and one D&A total for the fiscal year."
+
+[[task]]
+task_id = "cc_msft_sm_ga"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_msft_sm_ga.json"
+reference_ref = "data/ref/cc_msft_sm_ga.json"
+check = "checks/answer.py:check"
+note = "Four fiscal-year facts; the result equals sales and marketing plus general and administrative (26.710B + 7.956B)."
+
+[[task]]
+task_id = "cc_cardinal_nonoperating"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_cardinal_nonoperating.json"
+reference_ref = "data/ref/cc_cardinal_nonoperating.json"
+check = "checks/answer.py:check"
+note = "Pre-tax income (2.174B) is below operating income (2.613B): a net expense, negative."
+
+[[task]]
+task_id = "cc_cisco_operating_expenses"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_cisco_operating_expenses.json"
+reference_ref = "data/ref/cc_cisco_operating_expenses.json"
+check = "checks/answer.py:check"
+note = "GrossProfit and OperatingIncomeLoss, fiscal-year columns."
+
+[[task]]
+task_id = "cc_cardinal_ebitda_less_capex"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_cardinal_ebitda_less_capex.json"
+reference_ref = "data/ref/cc_cardinal_ebitda_less_capex.json"
+check = "checks/answer.py:check"
+note = "Three fiscal-year facts."
+
+[[task]]
+task_id = "cc_adp_cash_after_returns"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_adp_cash_after_returns.json"
+reference_ref = "data/ref/cc_adp_cash_after_returns.json"
+check = "checks/answer.py:check"
+note = "Three fiscal-year cash-flow facts."
+
+[[task]]
+task_id = "cc_msft_net_cash"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_msft_net_cash.json"
+reference_ref = "data/ref/cc_msft_net_cash.json"
+check = "checks/answer.py:check"
+note = "Cash alone (short-term investments excluded) is below total debt, so the result is negative."
+
+[[task]]
+task_id = "sl_apple_greater_china"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
+split = "config"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sl_apple_greater_china.json"
+reference_ref = "data/ref/sl_apple_greater_china.json"
+check = "checks/answer.py:check"
+note = "The segment's sales carry two pairs (the segment and ConsolidationItems=OperatingSegments); no other Greater China revenue fact exists for the quarter."
+
+[[task]]
+task_id = "sl_apple_iphone_9m"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/sl_apple_iphone_9m.json"
+reference_ref = "data/ref/sl_apple_iphone_9m.json"
+check = "checks/answer.py:check"
+note = "One iPhone fact at qtrs = 3; the quarter is qtrs = 1."
+
+[[task]]
+task_id = "sl_amazon_aws_opinc"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/sl_amazon_aws_opinc.json"
+reference_ref = "data/ref/sl_amazon_aws_opinc.json"
+check = "checks/answer.py:check"
+note = "One segment operating income fact per segment for the quarter."
+
+[[task]]
+task_id = "sl_meta_reality_labs"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sl_meta_reality_labs.json"
+reference_ref = "data/ref/sl_meta_reality_labs.json"
+check = "checks/answer.py:check"
+note = "The segment's quarterly result is a loss."
+
+[[task]]
+task_id = "sl_lilly_zepbound_us"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sl_lilly_zepbound_us.json"
+reference_ref = "data/ref/sl_lilly_zepbound_us.json"
+check = "checks/answer.py:check"
+note = "Two pairs, product and country; worldwide Zepbound is 4.928B and outside the US 55M."
+
+[[task]]
+task_id = "sl_msft_intelligent_cloud"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sl_msft_intelligent_cloud.json"
+reference_ref = "data/ref/sl_msft_intelligent_cloud.json"
+check = "checks/answer.py:check"
+note = "One segment revenue fact for the fiscal year; the Microsoft Cloud (a different, cross-segment measure) is not it."
+
+[[task]]
+task_id = "sl_jnj_oncology"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sl_jnj_oncology.json"
+reference_ref = "data/ref/sl_jnj_oncology.json"
+check = "checks/answer.py:check"
+note = "Franchises are members of axis Subsegments within the segment; one Oncology fact for the quarter."
+
+[[task]]
+task_id = "sl_nvidia_taiwan"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sl_nvidia_taiwan.json"
+reference_ref = "data/ref/sl_nvidia_taiwan.json"
+check = "checks/answer.py:check"
+note = "Taiwan is the country member TW on the Geographical axis; one fact for the quarter."
+
+[[task]]
+task_id = "sl_cat_pe_total_sales"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sl_cat_pe_total_sales.json"
+reference_ref = "data/ref/sl_cat_pe_total_sales.json"
+check = "checks/answer.py:check"
+note = "With ConsolidationItems=OperatingSegments the segment total is 8.238B; the segment-only fact (6.795B) is external sales, and the intersegment part is -1.443B."
+
+[[task]]
+task_id = "sl_walmart_sams_revenues"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sl_walmart_sams_revenues.json"
+reference_ref = "data/ref/sl_walmart_sams_revenues.json"
+check = "checks/answer.py:check"
+note = "Revenues (26.367B) is the total; the segment's net sales (RevenueFromContractWithCustomer..., 25.713B) excludes membership income."
+
+[[task]]
+task_id = "sl_southern_georgia_power"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sl_southern_georgia_power.json"
+reference_ref = "data/ref/sl_southern_georgia_power.json"
+check = "checks/answer.py:check"
+note = "Georgia Power is a co-registrant: its figures are facts of Southern Co's filing on axis LegalEntity."
+
+[[task]]
+task_id = "sl_aep_texas_ni_6m"
+group = "segment_lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sl_aep_texas_ni_6m.json"
+reference_ref = "data/ref/sl_aep_texas_ni_6m.json"
+check = "checks/answer.py:check"
+note = "AEP Texas's own copy of the filing is not in sub (co-registrant rule); its figures are LegalEntity facts of AEP's."
+
+[[task]]
+task_id = "sa_amazon_segment_opinc"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/sa_amazon_segment_opinc.json"
+reference_ref = "data/ref/sa_amazon_segment_opinc.json"
+check = "checks/answer.py:check"
+note = "Two of the three segment facts (the third is AWS); all three sum to consolidated operating income, so asking for all would not need dnum."
+
+[[task]]
+task_id = "sa_apple_segment_count"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/sa_apple_segment_count.json"
+reference_ref = "data/ref/sa_apple_segment_count.json"
+check = "checks/answer.py:check"
+note = "Americas, Europe, Greater China, Japan and Rest of Asia Pacific."
+
+[[task]]
+task_id = "sa_msft_segment_opinc"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/sa_msft_segment_opinc.json"
+reference_ref = "data/ref/sa_msft_segment_opinc.json"
+check = "checks/answer.py:check"
+note = "Two of the three one-pair segment facts for the fiscal year; all three sum to consolidated operating income, so asking for all would not need dnum."
+
+[[task]]
+task_id = "sa_meta_outside_us_canada"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sa_meta_outside_us_canada.json"
+reference_ref = "data/ref/sa_meta_outside_us_canada.json"
+check = "checks/answer.py:check"
+note = "Meta's four regions (USCanada, Europe, AsiaPacific, RestOfWorld) partition revenue; the answer is the other three."
+
+[[task]]
+task_id = "sa_duke_coregistrants"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sa_duke_coregistrants.json"
+reference_ref = "data/ref/sa_duke_coregistrants.json"
+check = "checks/answer.py:check"
+note = "Distinct LegalEntity members with a quarterly NetIncomeLoss fact."
+
+[[task]]
+task_id = "sa_lilly_non_us"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sa_lilly_non_us.json"
+reference_ref = "data/ref/sa_lilly_non_us.json"
+check = "checks/answer.py:check"
+note = "NonUs (8.561B) is itself a member and equals Europe + Japan + China + rest of world; summing every non-US member would count it twice."
+
+[[task]]
+task_id = "sa_disney_segments_gross"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sa_disney_segments_gross.json"
+reference_ref = "data/ref/sa_disney_segments_gross.json"
+check = "checks/answer.py:check"
+note = "Three one-pair segment facts (25.813B); consolidated revenue (25.248B) is after the -565M eliminations."
+
+[[task]]
+task_id = "sa_disney_eliminations"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sa_disney_eliminations.json"
+reference_ref = "data/ref/sa_disney_eliminations.json"
+check = "checks/answer.py:check"
+note = "The SegmentEliminations member alone; its geographic and product splits carry a second pair."
+
+[[task]]
+task_id = "sa_cat_intersegment"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sa_cat_intersegment.json"
+reference_ref = "data/ref/sa_cat_intersegment.json"
+check = "checks/answer.py:check"
+note = "Caterpillar reports the total as +1.677B; the per-segment elimination facts (-69M, -85M, 0, -1.443B, -80M) sum to -1.677B, so either route gives the same magnitude."
+
+[[task]]
+task_id = "sa_rtx_external_sales"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sa_rtx_external_sales.json"
+reference_ref = "data/ref/sa_rtx_external_sales.json"
+check = "checks/answer.py:check"
+note = "External sales are the one-pair segment facts; with ConsolidationItems=OperatingSegments they include intersegment sales."
+
+[[task]]
+task_id = "sa_jnj_top_medtech_franchise"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sa_jnj_top_medtech_franchise.json"
+reference_ref = "data/ref/sa_jnj_top_medtech_franchise.json"
+check = "checks/answer.py:check"
+note = "Surgery (2.653B) leads Orthopaedics (2.418B)."
+
+[[task]]
+task_id = "sa_lilly_cardiometabolic_other"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sa_lilly_cardiometabolic_other.json"
+reference_ref = "data/ref/sa_lilly_cardiometabolic_other.json"
+check = "checks/answer.py:check"
+note = "Cardiometabolic health (18.353B) is the parent of Mounjaro, Zepbound, Jardiance, Trulicity and other; the remainder equals Jardiance + Trulicity + other cardiometabolic (3.482B)."
+
+[[task]]
+task_id = "sa_southern_coregistrants_ni"
+group = "segment_aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_aggregate", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sa_southern_coregistrants_ni.json"
+reference_ref = "data/ref/sa_southern_coregistrants_ni.json"
+check = "checks/answer.py:check"
+note = "Five LegalEntity members with a quarterly NetIncomeLoss fact (attributable to the entity; Southern Power also reports ProfitLoss, before its noncontrolling share)."
+
+[[task]]
+task_id = "sc_amazon_aws_margin"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
+split = "config"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sc_amazon_aws_margin.json"
+reference_ref = "data/ref/sc_amazon_aws_margin.json"
+check = "checks/answer.py:check"
+note = "Both one-pair segment facts for the quarter."
+
+[[task]]
+task_id = "sc_meta_foa_margin"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/sc_meta_foa_margin.json"
+reference_ref = "data/ref/sc_meta_foa_margin.json"
+check = "checks/answer.py:check"
+note = "Segment revenue is the one-pair fact (60.370B), not its advertising part."
+
+[[task]]
+task_id = "sc_nvidia_us_share"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sc_nvidia_us_share.json"
+reference_ref = "data/ref/sc_nvidia_us_share.json"
+check = "checks/answer.py:check"
+note = "US member over consolidated Revenues from num."
+
+[[task]]
+task_id = "sc_apple_china_growth"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sc_apple_china_growth.json"
+reference_ref = "data/ref/sc_apple_china_growth.json"
+check = "checks/answer.py:check"
+note = "Both quarters in one filing, qtrs = 1."
+
+[[task]]
+task_id = "sc_apple_services_gross_margin"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sc_apple_services_gross_margin.json"
+reference_ref = "data/ref/sc_apple_services_gross_margin.json"
+check = "checks/answer.py:check"
+note = "Revenue and cost on member Service at qtrs = 3."
+
+[[task]]
+task_id = "sc_msft_cloud_share"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sc_msft_cloud_share.json"
+reference_ref = "data/ref/sc_msft_cloud_share.json"
+check = "checks/answer.py:check"
+note = "The Microsoft Cloud is a member of axis ProductsOrServicesSecondaryCategorization, not a segment."
+
+[[task]]
+task_id = "sc_walmart_intl_ecommerce"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sc_walmart_intl_ecommerce.json"
+reference_ref = "data/ref/sc_walmart_intl_ecommerce.json"
+check = "checks/answer.py:check"
+note = "eCommerce sales are a member of axis MajorCustomers within the segment."
+
+[[task]]
+task_id = "sc_cat_pe_intersegment_share"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sc_cat_pe_intersegment_share.json"
+reference_ref = "data/ref/sc_cat_pe_intersegment_share.json"
+check = "checks/answer.py:check"
+note = "Intersegment sales (-1.443B, stored as an elimination) over the segment total including them (8.238B)."
+
+[[task]]
+task_id = "sc_lilly_mounjaro_us_share"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sc_lilly_mounjaro_us_share.json"
+reference_ref = "data/ref/sc_lilly_mounjaro_us_share.json"
+check = "checks/answer.py:check"
+note = "The US fact has two pairs; the worldwide fact only the product."
+
+[[task]]
+task_id = "sc_rtx_raytheon_margin"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sc_rtx_raytheon_margin.json"
+reference_ref = "data/ref/sc_rtx_raytheon_margin.json"
+check = "checks/answer.py:check"
+note = "Total segment sales (8.269B) carry ConsolidationItems=OperatingSegments; external sales are 8.220B."
+
+[[task]]
+task_id = "sc_apple_americas_opinc_change"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/sc_apple_americas_opinc_change.json"
+reference_ref = "data/ref/sc_apple_americas_opinc_change.json"
+check = "checks/answer.py:check"
+note = "Both quarters in one filing."
+
+[[task]]
+task_id = "sc_jnj_medtech_us_growth"
+group = "segment_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/sc_jnj_medtech_us_growth.json"
+reference_ref = "data/ref/sc_jnj_medtech_us_growth.json"
+check = "checks/answer.py:check"
+note = "Two-pair facts at qtrs = 2; the quarter pair (qtrs = 1) gives a different rate."

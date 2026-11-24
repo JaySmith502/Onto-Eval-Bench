@@ -1,0 +1,5 @@
+{
+ "answer": null,
+ "answer_format": "number",
+ "sql": "SELECT 'NOT_IN_DATABASE' WHERE NOT EXISTS (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'PROCTER & GAMBLE CO' AND s.form = '10-K' AND s.period = 20260630 AND n.tag = 'ResearchAndDevelopmentExpense' AND n.ddate = 20260630 AND n.qtrs = 4 AND n.uom = 'USD')"
+}
