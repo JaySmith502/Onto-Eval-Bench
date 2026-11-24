@@ -239,6 +239,9 @@ class AdapterRef:
     command: tuple[str, ...]   # argv prefix; the runner appends the verb
     version: str
     digest: str = ""           # sha256 over the command's files (set by catalog.load), so an edited adapter is a new identity
+    image: str = ""            # digest-pinned container image ("name:tag@sha256:..."); "" => host process, no isolation
+    network_hosts: tuple[str, ...] = ()   # hosts the adapter may reach; () => no network. Part of what is measured
+    secret_env: tuple[str, ...] = ()      # NAMES of evaluator env vars handed to the adapter; values are never stored
 
 
 @dataclass(frozen=True)

@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -143,7 +144,11 @@ def _dispatch(a: argparse.Namespace, store: Store, cat: catalog_mod.Catalog) -> 
                         track=Track(f["track"]), purpose=Purpose(f["purpose"]), repetitions=f["repetitions"])
         if isinstance(p, Incompatibility) or p.plan_id != f["plan_id"]:
             raise ValueError("the catalog no longer reproduces this plan file")
-        print(runner.execute(store, cat, p, evaluator=a.evaluator or f["evaluator"]))
+        names = p.config.adapter.secret_env
+        if missing := [n for n in names if not os.environ.get(n)]:
+            raise ValueError(f"config {p.config.config_id} declares secret_env; set in the environment: {', '.join(missing)}")
+        print(runner.execute(store, cat, p, evaluator=a.evaluator or f["evaluator"],
+                             secrets={n: os.environ[n] for n in names}))
     elif a.cmd == "intervene":
         run = store.run(a.run)
         store.append_intervention(Intervention(run.run_id, datetime.now(timezone.utc), a.actor, InterventionKind(a.kind),

@@ -92,7 +92,11 @@ def execute(store: Store, catalog: Catalog, plan: RunPlan, *, evaluator: str,
     if not store.exists(run_id):
         env = (("python", sys.version.split()[0]), ("platform", platform.platform()),
                ("adapter_version_declared", plan.config.adapter.version))
-        store.create_run(RunManifest(plan, _now(), evaluator, env, isolation(b)))
+        store.create_run(RunManifest(plan, _now(), evaluator, env, isolation(b, plan.config.adapter)))
+    declared = plan.config.adapter.secret_env
+    if missing := [n for n in declared if n not in (secrets or {})]:
+        raise ValueError(f"config {plan.config.config_id} needs secret_env {missing}; pass them to execute")
+    secrets = {n: secrets[n] for n in declared}   # only what the config names reaches the adapter
     with store.run_lock(run_id):
         rec = store.run(run_id)
         if rec.seal:
@@ -109,7 +113,7 @@ def execute(store: Store, catalog: Catalog, plan: RunPlan, *, evaluator: str,
 
         def call(verb: Verb, req: dict, timeout: float, name: str, rep: int = 0, n: int = 0):
             return invoke(adapter, verb, {**common, **req}, artifact_dir=store.artifact_dir(run_id, name, rep, n),
-                          state_dir=state, timeout_s=timeout, budget=b, secrets=secrets or {})
+                          state_dir=state, timeout_s=timeout, budget=b, secrets=secrets)
 
         # setup runs on every execute, resumes included, so adapters must make it idempotent
         setups = store.artifact_dir(run_id, "_setup", 0, 0).parent

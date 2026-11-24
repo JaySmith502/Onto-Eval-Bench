@@ -12,9 +12,13 @@ Protocol: the runner executes `<adapter.command...> <verb>` with:
   - env       = scrubbed: PATH, HOME=<cwd>, OBS_STATE_DIR, plus secrets the
                 config explicitly names. Nothing else is inherited.
 stdin, stdout and stderr are anonymous temp files, and state_dir and build inputs are
-staged copies in a scratch dir, so no request names a catalog or store path. The
-filesystem is NOT sandboxed: an adapter running as the evaluator's user could still
-search the disk (recorded as `filesystem: not_enforced`).
+staged copies in a scratch dir, so no request names a catalog or store path.
+
+With AdapterRef.image set, the verb runs in `docker run` instead: the container sees only the call's
+cwd and the scratch dir (rw) and the adapter_command's files (ro), at their host paths, with no
+network unless hosts are declared, so references, catalog and store are not reachable (recorded as
+`filesystem: container`). Without an image the filesystem is NOT sandboxed: an adapter running as
+the evaluator's user could search the disk (recorded as `filesystem: not_enforced`).
 
 Verbs and requests (in CONTROLLED mode every request also carries "model": [model_id, model_version]):
   setup     {"settings": {...}, "state_dir": str}        # runs again on every resume: make it idempotent
@@ -50,6 +54,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -103,9 +108,15 @@ def _limits(budget: Budget, timeout_s: float, report_fd: int | None = None):
     return apply
 
 
-def isolation(budget: Budget) -> tuple[tuple[str, str], ...]:
-    """What invoke will actually enforce on this host, probed in a throwaway child.
-    Recorded in the manifest's `isolation` field."""
+def isolation(budget: Budget, adapter: AdapterRef | None = None) -> tuple[tuple[str, str], ...]:
+    """What invoke will actually enforce for this adapter on this host. Recorded in the manifest's
+    `isolation` field. Host-process limits are probed in a throwaway child; a container's are Docker's."""
+    if adapter is not None and adapter.image:
+        # ponytail: egress is all-or-nothing (bridge vs none); per-host filtering needs an egress proxy
+        # container the adapter's network is restricted to, with an allowlist of network_hosts.
+        net = f"declared_hosts_not_enforced:{','.join(adapter.network_hosts)}" if adapter.network_hosts else "none"
+        return (("process_group", "enforced"), ("env", "scrubbed"), ("memory", "container_limit"),
+                ("pids", "container_limit"), ("filesystem", "container"), ("network", net))
     r, w = os.pipe()
     try:
         subprocess.run([sys.executable, "-c", "pass"], preexec_fn=_limits(budget, budget.task_timeout_s, w),
@@ -119,6 +130,31 @@ def isolation(budget: Budget) -> tuple[tuple[str, str], ...]:
     probed = tuple(tuple(kv.split("=", 1)) for kv in got.split(",") if "=" in kv) or (("rlimits", "unknown"),)
     return ((("process_group", "enforced"), ("env", "scrubbed")) + tuple(probed)
             + (("filesystem", "not_enforced"), ("network", "not_enforced")))
+
+
+PIDS_LIMIT = 256
+
+
+def docker_argv(adapter: AdapterRef, verb: Verb, *, name: str, cwd: str, scratch: str, env: dict[str, str],
+                memory_mb: int) -> list[str]:
+    """The `docker run` command for one verb call. Pure. Mounts are exactly: cwd and scratch (rw) and each
+    adapter_command file argument (ro), all at their host path. HOME and OBS_STATE_DIR are paths and go on
+    the command line; every other env entry except PATH is `-e NAME` only, so a secret's value never
+    appears in argv and docker reads it from its own environment. PATH is the image's."""
+    argv = ["docker", "run", "--rm", "-i", "--name", name,
+            "--network", "bridge" if adapter.network_hosts else "none",
+            "--memory", f"{memory_mb}m", "--memory-swap", f"{memory_mb}m", "--pids-limit", str(PIDS_LIMIT),
+            "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "-w", cwd,
+            "-v", f"{cwd}:{cwd}", "-v", f"{scratch}:{scratch}"]
+    argv += [x for a in adapter.command if os.path.isabs(a) and os.path.isfile(a) for x in ("-v", f"{a}:{a}:ro")]
+    if hasattr(os, "getuid"):
+        argv += ["--user", f"{os.getuid()}:{os.getgid()}"]
+    for k, v in env.items():
+        if k in ("HOME", "OBS_STATE_DIR"):
+            argv += ["-e", f"{k}={v}"]
+        elif k != "PATH":
+            argv += ["-e", k]
+    return argv + [adapter.image, *adapter.command, verb.value]
 
 
 def _cost(c: object) -> Cost:
@@ -143,7 +179,12 @@ def invoke(adapter: AdapterRef, verb: Verb, request: dict, *, artifact_dir: Path
     adapter misbehaviour; every failure becomes a Status. Raises AdapterNotStartable
     when the command cannot be spawned at all.
 
-    Isolation enforced (recorded into the manifest's `isolation` field by `isolation`):
+    With adapter.image set the verb runs under `docker_argv` instead of a host process, and state_dir.parent is
+    mounted read-write as the run scratch dir, so it must be dedicated to this run (the runner's is). A timeout
+    `docker kill`s the named container; exit 137 (OOM or kill) is INTERRUPTED, 125 (docker itself failed to
+    start the container) is AdapterNotStartable. rlimits do not apply to the docker CLI process.
+
+    Host-process isolation enforced (recorded into the manifest's `isolation` field by `isolation`):
       - own process group (start_new_session=True), killed whole when the call ends
       - RLIMIT_AS = budget.memory_mb, RLIMIT_CPU = timeout_s, RLIMIT_FSIZE = memory_mb (POSIX preexec_fn)
       - scrubbed env, a temporary cwd, stdio through anonymous files: no pipe a stray
@@ -166,9 +207,18 @@ def invoke(adapter: AdapterRef, verb: Verb, request: dict, *, artifact_dir: Path
         fin.write(json.dumps(request).encode())
         fin.seek(0)
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": cwd, "OBS_STATE_DIR": str(state_dir), **secrets}
+        name = f"obs-{uuid.uuid4().hex}"
+        if adapter.image:
+            # the docker CLI is the evaluator's own process: it keeps the real environment (config, context) and
+            # takes secret values from it; only the names listed by docker_argv reach the container
+            argv = docker_argv(adapter, verb, name=name, cwd=cwd, scratch=str(state_dir.parent), env=env,
+                               memory_mb=budget.memory_mb)
+            popen = dict(env={**os.environ, **secrets}, cwd=None)
+        else:
+            argv = [*adapter.command, verb.value]
+            popen = dict(env=env, cwd=cwd, preexec_fn=_limits(budget, timeout_s))
         try:
-            proc = subprocess.Popen([*adapter.command, verb.value], stdin=fin, stdout=fout, stderr=ferr, cwd=cwd,
-                                    env=env, start_new_session=True, preexec_fn=_limits(budget, timeout_s))
+            proc = subprocess.Popen(argv, stdin=fin, stdout=fout, stderr=ferr, start_new_session=True, **popen)
         except (OSError, subprocess.SubprocessError) as e:
             raise AdapterNotStartable(f"cannot start adapter {list(adapter.command)}: {e}") from e
         timed_out = False
@@ -177,6 +227,8 @@ def invoke(adapter: AdapterRef, verb: Verb, request: dict, *, artifact_dir: Path
         except subprocess.TimeoutExpired:
             timed_out = True
         finally:
+            if adapter.image and timed_out:   # killing the CLI would leave the container running
+                subprocess.run(["docker", "kill", name], capture_output=True, timeout=30, check=False)
             _kill(proc)
             proc.wait()
         ferr.seek(0)
@@ -185,6 +237,11 @@ def invoke(adapter: AdapterRef, verb: Verb, request: dict, *, artifact_dir: Path
         out = fout.read(cap)
     if timed_out:
         return done(Status.TIMEOUT, f"timed out after {timeout_s}s")
+    if adapter.image and proc.returncode == 125:
+        raise AdapterNotStartable(f"docker could not start {adapter.image}: "
+                                  f"{stderr_path.read_text('utf-8', 'replace')[-500:].strip()}")
+    if adapter.image and proc.returncode == 137:
+        return done(Status.INTERRUPTED, "resource_limit or crash: container killed (exit 137, likely out of memory)")
     if proc.returncode < 0:
         try:
             sig = signal.Signals(-proc.returncode).name
