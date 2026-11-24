@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from observatory import cli, compare, catalog, report, runner, scoring  # noqa: E402
-from observatory.model import Attempt, Cost, Mode, Purpose, RunManifest, Status, Verdict  # noqa: E402
+from observatory.model import Attempt, AttemptStart, Cost, Mode, Purpose, RunManifest, Status, Verdict  # noqa: E402
 from observatory.store import AppendOnlyViolation, Store  # noqa: E402
 
 FIXTURE = Path(__file__).parent / "fixtures"
@@ -40,7 +40,7 @@ class Library(unittest.TestCase):
         cls.plan_a, cls.a = run_all(cls.store, cls.cat, "ontoA-m1", Mode.CONTROLLED, "jay", 1)
         cls.plan_b, cls.b = run_all(cls.store, cls.cat, "baseline-m1", Mode.CONTROLLED, "jay", 2)
         cls.plan_n, cls.n = run_all(cls.store, cls.cat, "ontoA-native", Mode.NATIVE, "jay", 1)
-        for orig in (cls.b, cls.n):
+        for orig in (cls.a, cls.b, cls.n):
             p = runner.reproduce(cls.store, cls.cat, orig, evaluator="ana")
             cls.rid = runner.execute(cls.store, cls.cat, p, evaluator="ana")
             scoring.score_run(cls.store, cls.cat, cls.rid)
@@ -70,18 +70,30 @@ class Library(unittest.TestCase):
 
     def test_store_rejects_out_of_plan_attempts(self):
         m = self.store.run(self.a).manifest
-        open_run = RunManifest("open-run", m.plan, m.started_at, "jay", (), ())
-        self.store.create_run(open_run)
+        st = Store(Path(self.tmp.name) / "other-store")   # an open run kept out of the shared store's cohorts
+        st.create_run(m)
         now = datetime.now(timezone.utc)
-        mk = lambda task, rep, n: Attempt("open-run", task, rep, n, None, None, "", 0.1, Cost(), now)
-        for bad in (mk("nope", 0, 1), mk("t1", 5, 1), mk("t1", 0, 2)):
+        start = lambda task, rep, n, run=m.run_id: AttemptStart(run, task, rep, n, now)
+        mk = lambda task, rep, n, failure=None: Attempt(m.run_id, task, rep, n, failure, None, "", 0.1, Cost(), now)
+        for bad in (start("nope", 0, 1), start("t1", 5, 1), start("t1", 0, 2)):
             with self.assertRaises(AppendOnlyViolation):
-                self.store.append_attempt(bad)
-        self.store.append_attempt(mk("t1", 0, 1))
-        with self.assertRaises(AppendOnlyViolation):      # max_attempts is 2; 1 -> 2 ok, 3 not
-            self.store.append_attempt(mk("t1", 0, 3))
+                st.append_start(bad)
+        with self.assertRaises(AppendOnlyViolation):      # an attempt needs its start
+            st.append_attempt(mk("t1", 0, 1))
+        st.append_start(start("t1", 0, 1))
+        with self.assertRaises(AppendOnlyViolation):      # one attempt in flight at a time
+            st.append_start(start("t2", 0, 1))
+        st.append_attempt(mk("t1", 0, 1, Status.TIMEOUT))
+        st.append_start(start("t1", 0, 2))                 # TIMEOUT is retryable
+        st.append_attempt(mk("t1", 0, 2, Status.TIMEOUT))
+        with self.assertRaises(AppendOnlyViolation):      # max_attempts is 2
+            st.append_start(start("t1", 0, 3))
+        st.append_start(start("t2", 0, 1))
+        st.append_attempt(mk("t2", 0, 1))
+        with self.assertRaises(AppendOnlyViolation):      # a completed answer is never re-sampled
+            st.append_start(start("t2", 0, 2))
         with self.assertRaises(AppendOnlyViolation):      # sealed run
-            self.store.append_attempt(replace(mk("t2", 0, 1), run_id=self.a))
+            self.store.append_start(start("t2", 0, 1, run=self.a))
 
     def test_controlled_and_native_are_different_cohorts(self):
         cs = compare.cohorts(self.store, self.cat)
@@ -107,8 +119,7 @@ class Library(unittest.TestCase):
 
     def test_verify_reproduces_exactly(self):
         for r in self.store.runs():
-            if r.run_id != "open-run":   # created unscored by the store test
-                self.assertEqual(scoring.verify(self.store, self.cat, r.run_id), [])
+            self.assertEqual(scoring.verify(self.store, self.cat, r.run_id), [])
 
     def test_export_redacts_restricted_tasks(self):
         out = report.export(self.store, self.cat, Path(self.tmp.name) / "export")
@@ -121,18 +132,19 @@ class Library(unittest.TestCase):
     def test_publish_refuses_while_unresolved_then_succeeds_after_adjudication(self):
         self.assertEqual(report.blockers(self.store, self.cat), [])
         oid = f"{self.a}/t1/0"
-        scoring.record_review(self.store, outcome_id=oid, reviewer="ana", status=Status.SCORED, verdict=Verdict(0.0),
+        scoring.record_review(self.store, self.cat, outcome_id=oid, reviewer="ana", status=Status.SCORED, verdict=Verdict(0.0),
                               rationale="wrong join")
         self.assertEqual(self.store.run(self.a).outcomes[("t1", 0)].status, Status.UNRESOLVED)
         self.assertTrue(any("unresolved" in b.what and oid in b.what for b in report.blockers(self.store, self.cat)))
         with self.assertRaises(report.PublishBlocked):
             report.publish(self.store, self.cat, editor="lee")
-        scoring.record_review(self.store, outcome_id=oid, reviewer="lee", status=Status.SCORED, verdict=Verdict(0.5),
+        scoring.record_review(self.store, self.cat, outcome_id=oid, reviewer="lee", status=Status.SCORED, verdict=Verdict(0.5),
                               rationale="partially right", adjudicate=True)
         self.assertEqual(self.store.run(self.a).outcomes[("t1", 0)].credit, 0.5)
         self.assertEqual(report.blockers(self.store, self.cat), [])
         site = report.publish(self.store, self.cat, editor="lee")
         self.assertTrue((site / "index.html").exists() and (site / "export" / "bundle.json").exists())
+        self.assertEqual(report.publish(self.store, self.cat, editor="lee"), site)   # same evidence, same publication
         self.assertNotIn("DRAFT", (site / "index.html").read_text())
         draft = report.build(self.store, self.cat, Path(self.tmp.name) / "draft")
         self.assertIn("DRAFT", (draft / "index.html").read_text())

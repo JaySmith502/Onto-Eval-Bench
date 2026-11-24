@@ -6,10 +6,13 @@ seeded from an existing manifest.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import platform
 import random
+import shutil
 import sys
+import tempfile
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +20,7 @@ from pathlib import Path
 from .adapter import Verb, invoke, isolation
 from .catalog import Catalog
 from .model import (
-    AdapterRef, Attempt, BuildRecord, Cost, Incompatibility, Mode, Purpose, RETRYABLE, RunManifest, RunPlan, Seal,
+    AdapterRef, Attempt, AttemptStart, BuildRecord, Cost, Incompatibility, Mode, Purpose, RETRYABLE, RunManifest, RunPlan, Seal,
     Status, Track,
 )
 from .store import Store
@@ -73,80 +76,103 @@ def execute(store: Store, catalog: Catalog, plan: RunPlan, *, evaluator: str,
     Every (task, repetition) in the plan ends with exactly one final attempt in
     attempts.jsonl, so the outcome matrix is dense by construction.
 
-    The run id is `<plan_id>-<evaluator>`: re-executing the same plan by the same
-    evaluator resumes or returns the sealed run, never starts a second sampling.
-    Order of cells is shuffled with a seed from plan_id, so a mid-run spend cap
-    doesn't systematically starve the same tail of the task list.
+    The run id is the plan_id: re-executing a plan, by anyone, resumes or returns the
+    sealed run and never starts a second sampling. `evaluator` is recorded when the run
+    is created. Each attempt is preceded by a start record; a start a crash left open is
+    resolved to INTERRUPTED on resume and spends that attempt. Order of cells is shuffled
+    with a seed from plan_id, so a mid-run spend cap doesn't systematically starve the
+    same tail of the task list.
     """
     pkg = catalog.package(plan.package)
     if pkg.ref != plan.package:
         raise ValueError("the catalog's package differs from the plan's (content hash mismatch)")
     if plan.task_ids != tuple(t.task_id for t in pkg.eligible(plan.track, plan.split)) or plan.budget != pkg.budget(plan.mode):
         raise ValueError("plan does not match its package's eligible tasks and budget")
-    b, run_id = plan.budget, f"{plan.plan_id}-{evaluator}"
+    b, run_id = plan.budget, plan.plan_id
     if not store.exists(run_id):
         env = (("python", sys.version.split()[0]), ("platform", platform.platform()),
                ("adapter_version_declared", plan.config.adapter.version))
-        store.create_run(RunManifest(run_id, plan, _now(), evaluator, env, isolation(b)))
-    rec = store.run(run_id)
-    if rec.seal:
-        return run_id
+        store.create_run(RunManifest(plan, _now(), evaluator, env, isolation(b)))
+    with store.run_lock(run_id):
+        rec = store.run(run_id)
+        if rec.seal:
+            return run_id
 
-    adapter, state = _abs(plan.config.adapter, catalog.root.parent), store.root / "runs" / run_id / "state"
-    settings = dict(plan.config.settings)
+        # Adapter-owned dirs live outside catalog and store, keyed by store and run so nothing is shared.
+        scratch = Path(tempfile.gettempdir()) / f"obs-{hashlib.sha256(str(store.root).encode()).hexdigest()[:8]}-{run_id}"
+        state = scratch / "state"
+        if rec.build is None:
+            shutil.rmtree(scratch, ignore_errors=True)
+        adapter, settings = _abs(plan.config.adapter, catalog.root.parent), dict(plan.config.settings)
+        imposed = plan.key.model
+        common = {"state_dir": str(state)} | ({"model": list(imposed)} if imposed else {})
 
-    def call(verb: Verb, req: dict, timeout: float, name: str, rep: int = 0, n: int = 0):
-        return invoke(adapter, verb, {"state_dir": str(state), **req}, workdir=store.artifact_dir(run_id, name, rep, n),
-                      state_dir=state, timeout_s=timeout, budget=b, secrets=secrets or {})
+        def call(verb: Verb, req: dict, timeout: float, name: str, rep: int = 0, n: int = 0):
+            return invoke(adapter, verb, {**common, **req}, artifact_dir=store.artifact_dir(run_id, name, rep, n),
+                          state_dir=state, timeout_s=timeout, budget=b, secrets=secrets or {})
 
-    build = rec.build
-    if build is None:
-        pdir = catalog.package_dir(pkg.ref)
-        rs = [call(Verb.SETUP, {"settings": settings}, b.build_timeout_s, "_setup")]
-        if rs[0].failure is None:
-            rs.append(call(Verb.BUILD, {"settings": settings, "inputs": [str(pdir / d.path) for d in pkg.data],
-                                        "information_access": sorted(plan.config.information_access)},
-                           b.build_timeout_s, "_build"))
-        f = rs[-1].failure
-        build = BuildRecord(run_id, None if f is None else Status.TIMEOUT if f is Status.TIMEOUT else Status.BUILD_FAILURE,
-                            rs[-1].error, sum(r.wall_s for r in rs), _sum(rs))
-        store.write_build(build)
+        # setup runs on every execute, resumes included, so adapters must make it idempotent
+        setups = store.artifact_dir(run_id, "_setup", 0, 0).parent
+        setup = call(Verb.SETUP, {"settings": settings}, b.build_timeout_s, "_setup", 0,
+                     len(list(setups.iterdir())) if setups.exists() else 0)
+        build = rec.build
+        if build is None:
+            rs, staged, pdir = [setup], scratch / "inputs", catalog.package_dir(pkg.ref)
+            if setup.failure is None:
+                for d in pkg.data:
+                    (staged / d.path).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(pdir / d.path, staged / d.path)
+                rs.append(call(Verb.BUILD, {"settings": settings, "inputs": [str(staged / d.path) for d in pkg.data],
+                                            "information_access": sorted(plan.config.information_access)},
+                               b.build_timeout_s, "_build"))
+            f = rs[-1].failure
+            build = BuildRecord(run_id, None if f is None else Status.TIMEOUT if f is Status.TIMEOUT else Status.BUILD_FAILURE,
+                                rs[-1].error, sum(r.wall_s for r in rs), _sum(rs))
+            store.write_build(build)
 
-    if build.failure is None:
-        tasks = {t.task_id: t for t in pkg.tasks}
-        inputs = {tid: json.loads((catalog.package_dir(pkg.ref) / tasks[tid].input_ref).read_text("utf-8"))
-                  for tid in plan.task_ids}
-        last: dict[tuple[str, int], Attempt] = {}
-        for a in rec.attempts:
-            last[(a.task_id, a.repetition)] = a   # file order == attempt order within a slot
-        spent = build.cost.usd + sum(a.cost.usd for a in rec.attempts)
-        cells = [(t, r) for t in plan.task_ids for r in range(plan.repetitions)]
-        random.Random(plan.plan_id).shuffle(cells)
-        for task_id, rep in cells:
-            while True:
-                prev = last.get((task_id, rep))
-                if prev is not None and (prev.failure not in RETRYABLE or prev.attempt_no >= b.max_attempts):
-                    break
-                n = prev.attempt_no + 1 if prev else 1
-                if spent >= b.max_usd:
-                    att = Attempt(run_id, task_id, rep, n, Status.BUDGET_EXHAUSTED, None, "spending limit reached",
-                                  0.0, Cost(), _now())
-                else:
-                    r = call(Verb.RUN_TASK, {"settings": settings, "task_id": task_id, "input": inputs[task_id]},
-                             b.task_timeout_s, task_id, rep, n)
-                    ref = None
-                    if r.failure is None:
-                        out = store.artifact_dir(run_id, task_id, rep, n) / "output.json"
-                        out.write_text(json.dumps(r.output, sort_keys=True), "utf-8")
-                        ref = out.relative_to(store.root).as_posix()
-                    att = Attempt(run_id, task_id, rep, n, r.failure, ref, r.error, r.wall_s, r.cost, _now())
+        if build.failure is None:
+            tasks = {t.task_id: t for t in pkg.tasks}
+            inputs = {tid: json.loads((catalog.package_dir(pkg.ref) / tasks[tid].input_ref).read_text("utf-8"))
+                      for tid in plan.task_ids}
+            last = dict(rec.final_attempts)
+            for s in store.open_starts(run_id):
+                last[(s.task_id, s.repetition)] = att = Attempt(
+                    run_id, s.task_id, s.repetition, s.attempt_no, Status.INTERRUPTED, None, "harness stopped mid-attempt",
+                    0.0, Cost(measured=False), _now())
                 store.append_attempt(att)
-                spent += att.cost.usd
-                last[(task_id, rep)] = att
+            spent = build.cost.usd + sum(a.cost.usd for a in rec.attempts)
+            cells = [(t, r) for t in plan.task_ids for r in range(plan.repetitions)]
+            random.Random(plan.plan_id).shuffle(cells)
+            for task_id, rep in cells:
+                while True:
+                    prev = last.get((task_id, rep))
+                    if prev is not None and (prev.failure not in RETRYABLE or prev.attempt_no >= b.max_attempts):
+                        break
+                    n = prev.attempt_no + 1 if prev else 1
+                    store.append_start(AttemptStart(run_id, task_id, rep, n, _now()))
+                    if spent >= b.max_usd:
+                        att = Attempt(run_id, task_id, rep, n, Status.BUDGET_EXHAUSTED, None, "spending limit reached",
+                                      0.0, Cost(), _now())
+                    else:
+                        r = call(Verb.RUN_TASK, {"settings": settings, "task_id": task_id, "input": inputs[task_id]},
+                                 b.task_timeout_s, task_id, rep, n)
+                        failure, error, ref = r.failure, r.error, None
+                        if failure is None and imposed and r.model_used != imposed:
+                            failure, error = Status.RUNTIME_FAILURE, f"controlled mode imposes {imposed}; adapter used {r.model_used}"
+                        if failure is None:
+                            out = store.artifact_dir(run_id, task_id, rep, n) / "output.json"
+                            out.write_text(json.dumps(r.output, sort_keys=True), "utf-8")
+                            ref = out.relative_to(store.root).as_posix()
+                        att = Attempt(run_id, task_id, rep, n, failure, ref, error, r.wall_s, r.cost, _now(), r.model_used,
+                                      r.adapter_version)
+                    store.append_attempt(att)
+                    spent += att.cost.usd
+                    last[(task_id, rep)] = att
 
-    call(Verb.TEARDOWN, {}, b.build_timeout_s, "_teardown")   # failure logged in its stderr.log, not fatal
-    store.seal(Seal(run_id, _now(), ()))
-    return run_id
+        call(Verb.TEARDOWN, {}, b.build_timeout_s, "_teardown")   # failure logged in its stderr.log, not fatal
+        store.seal(Seal(run_id, _now(), ()))
+        shutil.rmtree(scratch, ignore_errors=True)
+        return run_id
 
 
 def reproduce(store: Store, catalog: Catalog, run_id: str, *, evaluator: str) -> RunPlan | Incompatibility:

@@ -19,13 +19,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .model import (
     AdapterRef, AnalysisPlan, BenchmarkPackage, Budget, Candidate, ClaimStatus, ConfigurationIdentity,
-    DataSnapshot, Disclosure, ExecutableCheck, LadderLevel, Mode, PackageRef, Rubric, Split, Task, Track,
+    DataSnapshot, Disclosure, ExecutableCheck, LadderLevel, Mode, PackageRef, Rubric, Split, Task, Track, check_id,
 )
 
 
@@ -60,6 +61,10 @@ def _hash_dir(d: Path) -> str:
     return h.hexdigest()[:16]
 
 
+def _inside(pdir: Path, rel: str) -> bool:
+    return (pdir / rel).resolve().is_relative_to(pdir.resolve())
+
+
 def _sha256(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
@@ -73,6 +78,7 @@ def _toml(path: Path, problems: list[str]) -> dict:
 
 
 def _candidate(stem: str, d: dict) -> Candidate:
+    check_id("method_id", stem)
     claims = tuple(sorted((k, ClaimStatus(v)) for k, v in d.get("claims", {}).items()))
     if d.get("method_id", stem) != stem:
         raise ValueError(f"method_id must equal the file name {stem!r}")
@@ -80,6 +86,7 @@ def _candidate(stem: str, d: dict) -> Candidate:
 
 
 def _config(stem: str, d: dict) -> ConfigurationIdentity:
+    check_id("config_id", stem)
     if d.get("config_id", stem) != stem:
         raise ValueError(f"config_id must equal the file name {stem!r}")
     return ConfigurationIdentity(
@@ -89,7 +96,7 @@ def _config(stem: str, d: dict) -> ConfigurationIdentity:
 
 
 def _task(t: dict, pdir: Path, problems: list[str]) -> Task:
-    tid = t["task_id"]
+    tid = check_id("task_id", t["task_id"])
     if "rubric" in t:
         scale = tuple(float(x) for x in t["rubric"]["scale"])
         if not scale or not all(0.0 <= x <= 1.0 for x in scale):
@@ -98,15 +105,16 @@ def _task(t: dict, pdir: Path, problems: list[str]) -> Task:
     else:
         rel, _, fn = t["check"].partition(":")
         f = pdir / rel
-        if not fn or not f.is_file() or f"def {fn}" not in f.read_text("utf-8"):
+        if (not fn or not _inside(pdir, rel) or not f.is_file()
+                or not re.search(rf"^def {re.escape(fn)}\(", f.read_text("utf-8"), re.MULTILINE)):
             problems.append(f"{pdir}: task {tid}: check {t['check']!r} is not an existing file with that function")
             check = ExecutableCheck(t["check"], "")
         else:
             check = ExecutableCheck(t["check"], _sha256(f))
     refs = [r for r in (t["input_ref"], t.get("reference_ref")) if r]
     for r in refs:
-        if not (pdir / r).is_file():
-            problems.append(f"{pdir}: task {tid}: missing file {r}")
+        if not _inside(pdir, r) or not (pdir / r).is_file():
+            problems.append(f"{pdir}: task {tid}: {r} is not a file inside the package")
     if not t.get("tracks"):
         problems.append(f"{pdir}: task {tid}: needs at least one track")
     if not t.get("group"):
@@ -117,12 +125,12 @@ def _task(t: dict, pdir: Path, problems: list[str]) -> Task:
 
 
 def _package(pdir: Path, problems: list[str]) -> BenchmarkPackage:
-    pid, ver = pdir.parent.name, pdir.name
+    pid, ver = check_id("package_id", pdir.parent.name), check_id("package version", pdir.name)
     p, tt = _toml(pdir / "package.toml", problems), _toml(pdir / "tasks.toml", problems)
     data = []
     for s in p.get("data", ()):
         f = pdir / s["path"]
-        if not f.is_file() or _sha256(f) != s["sha256"]:
+        if not _inside(pdir, s["path"]) or not f.is_file() or _sha256(f) != s["sha256"]:
             problems.append(f"{pdir}: data snapshot {s['path']} is missing or its sha256 differs")
         data.append(DataSnapshot(s["path"], s["sha256"]))
     tasks = tuple(_task(t, pdir, problems) for t in tt.get("task", ()))
@@ -146,18 +154,22 @@ def load(root: Path) -> Catalog:
     """Parse and validate the whole catalog. Raises CatalogError listing all problems.
 
     Invariants established:
-    - every task has an ExecutableCheck (file exists, version = its sha256) or a Rubric
-      whose scale values are within [0,1]
+    - every task has an ExecutableCheck (file exists and defines that function, version = its
+      sha256) or a Rubric whose scale values are within [0,1]
+    - task, config, method and package ids match model.check_id; every input_ref,
+      reference_ref, check file and data snapshot resolves inside its package dir
     - task ids unique within a package; every task has >= 1 track and a group
     - data snapshot sha256s match the files (FR-02 integrity)
     - PackageRef.content_hash = hash of every file under the package dir; a lockfile
       `catalog/packages.lock` records id@version -> hash (first sight pins it), and a changed
       hash for an existing id@version is an error (published versions are immutable)
     - controlled_model and an AnalysisPlan present; analysis.min_groups >= 2
-    - every config's method_id exists in candidates
+    - every config's method_id exists in candidates; every adapter_command argument naming a
+      path (contains "/") is an existing file, relative to the catalog's parent dir
     - budgets defined for every Mode
     - every task tag and candidate claim key is in the taxonomy
     """
+    root = Path(root).resolve()
     problems: list[str] = []
 
     def each(sub: str, build, pattern: str = "*.toml") -> dict:
@@ -187,6 +199,10 @@ def load(root: Path) -> Catalog:
     for cid, c in configs.items():
         if c.method_id not in candidates:
             problems.append(f"config {cid}: unknown method_id {c.method_id!r}")
+        files = [root.parent / a for a in c.adapter.command if "/" in a]
+        problems += [f"config {cid}: adapter_command file {f} not found" for f in files if not f.is_file()]
+        h = hashlib.sha256(b"".join(f.read_bytes() for f in files if f.is_file())).hexdigest()[:16]
+        configs[cid] = replace(c, adapter=replace(c.adapter, digest=h))
     for mid, cand in candidates.items():
         problems += [f"candidate {mid}: claim tag {k!r} not in taxonomy" for k, _ in cand.claims if k not in taxonomy]
     for key, pkg in packages.items():

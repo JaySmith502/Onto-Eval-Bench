@@ -1,4 +1,5 @@
-"""Fake adapter driven by its settings: wrong_tasks, sleep_tasks (+sleep_s), fail_tasks, unsupported_tasks (csv task ids)."""
+"""Fake adapter driven by its settings: wrong_tasks, sleep_tasks (+sleep_s), fail_tasks, unsupported_tasks (csv task ids),
+model_used ("id,version" to claim a model other than the imposed one)."""
 import json
 import sys
 import time
@@ -10,7 +11,8 @@ csv = lambda k: set(filter(None, s.get(k, "").split(",")))
 
 
 def reply(status="completed", output=None):
-    print(json.dumps({"status": status, "output": output, "adapter_version": "fake-1",
+    model = s["model_used"].split(",") if s.get("model_used") else req.get("model")
+    print(json.dumps({"status": status, "output": output, "adapter_version": "fake-1", "model_used": model,
                       "cost": {"usd": 0.01, "tokens_in": 10, "tokens_out": 5, "measured": True}}))
 
 

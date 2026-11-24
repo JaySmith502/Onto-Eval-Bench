@@ -89,3 +89,14 @@ input_ref = "data/in/t6.json"
 reference_ref = "data/ref/t6.json"
 check = "checks/eq.py:check"
 
+[[task]]
+task_id = "r1"
+group = "g1"
+tracks = ["construction"]
+tags = ["task:mapping"]
+split = "heldout"
+disclosure = "public"
+difficulty = "easy"
+consequence = "low"
+input_ref = "data/in/r1.json"
+rubric = { text = "Is the mapping defensible?", scale = [0.0, 0.5, 1.0] }

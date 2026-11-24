@@ -18,16 +18,19 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import os
 import shutil
+import statistics
 import tempfile
+from collections import Counter
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import compare
+from . import compare, scoring
 from .catalog import Catalog
 from .model import (
-    Cohort, ComparabilityKey, Disclosure, METHODOLOGY_VERSION, Purpose, Status,
+    Cohort, ComparabilityKey, CorrectionKind, Disclosure, METHODOLOGY_VERSION, Purpose, Status,
 )
 from .store import Store, to_jsonable
 
@@ -48,28 +51,42 @@ class PublishBlocked(RuntimeError):
 
 def blockers(store: Store, catalog: Catalog) -> list[Blocker]:
     """Why publishing would violate acceptance criteria. Empty list = publishable.
-    - any SCORED run in a cohort unsealed
+    - any SCORED run in a cohort unsealed, or its executable scoring does not verify
     - any cohort outcome UNRESOLVED (unreviewed rubric task or dispute)
-    - no REPRODUCTION run exists for at least one member of each cohort (acceptance #6)
+    - a cohort member without a qualifying REPRODUCTION run (acceptance #6): sealed, not void,
+      same configuration identity and key, by an evaluator who ran none of the member's runs,
+      no UNRESOLVED outcome, and executable scoring that verifies exactly
+    - a VOID_RUN no second person has confirmed
     - nothing to publish at all
     """
     out: list[Blocker] = []
+    corr = store.corrections()
+    out += [Blocker(f"void of run {v.target} by {v.author} unconfirmed",
+                    f"obs confirm-void {v.target} --author <someone other than {v.author}>")
+            for v in corr if v.kind is CorrectionKind.VOID_RUN and not any(
+                c.kind is CorrectionKind.CONFIRM_VOID and c.target == v.target and c.author != v.author for c in corr)]
     cs = compare.cohorts(store, catalog)
     if not cs:
         out.append(Blocker("no scored runs", "obs plan, obs run, obs score"))
-    repro = {(r.manifest.plan.key, r.manifest.plan.config.config_id) for r in store.runs()
-             if r.manifest.plan.purpose is Purpose.REPRODUCTION and r.void is None and r.seal}
+    repros = [r for r in store.runs() if r.manifest.plan.purpose is Purpose.REPRODUCTION and r.void is None and r.seal]
     for key, cohort in cs.items():
         for c, runs in cohort.runs.items():
             for r in runs:
                 if r.seal is None:
                     out.append(Blocker(f"run {r.run_id} unsealed", "obs run <plan file> (resumes)"))
+                elif scoring.verify(store, catalog, r.run_id):
+                    out.append(Blocker(f"executable scoring of run {r.run_id} does not reproduce", f"obs verify {r.run_id}"))
                 out += [Blocker(f"outcome {r.run_id}/{t}/{rep} unresolved",
                                 f"obs review {r.run_id}/{t}/{rep} --value V --rationale ... --adjudicate")
                         for (t, rep), o in sorted(r.outcomes.items()) if o.status is Status.UNRESOLVED]
-        if not any((key, c) in repro for c in cohort.runs):
-            out.append(Blocker(f"no reproduction run for cohort {key.package} {key.mode} {key.track}",
-                               "obs reproduce <run_id> --evaluator <other>, then obs run, obs score"))
+            ident, evaluators = runs[0].manifest.plan.config.identity_hash, {r.manifest.evaluator for r in runs}
+            if not any(x.manifest.plan.key == key and x.manifest.plan.config.identity_hash == ident
+                       and x.manifest.evaluator not in evaluators
+                       and all(o.status is not Status.UNRESOLVED for o in x.outcomes.values())
+                       and not scoring.verify(store, catalog, x.run_id) for x in repros):
+                out.append(Blocker(f"no qualifying reproduction run of {c} in {key.package} {key.mode} {key.track}",
+                                   f"obs reproduce <run_id> --evaluator <not {', '.join(sorted(evaluators))}>, "
+                                   "then obs run and obs score as that evaluator"))
     return out
 
 
@@ -117,10 +134,11 @@ def _drill(store: Store, cohort: Cohort, config_id: str, pop: compare.Population
             if t not in pop.task_ids:
                 continue
             atts = [a for a in r.attempts if (a.task_id, a.repetition) == (t, rep)]
+            final = r.final_attempts.get((t, rep))
             restricted = tasks[t].disclosure is Disclosure.RESTRICTED
             text = _REDACTED if restricted else "; ".join(
                 f"#{a.attempt_no} {a.failure.name if a.failure else 'ok'} {a.error}".strip() for a in atts)
-            outs = "" if restricted or not atts or not atts[-1].output_ref else (store.root / atts[-1].output_ref).read_text("utf-8")
+            outs = "" if restricted or not final or not final.output_ref else (store.root / final.output_ref).read_text("utf-8")
             decs = [d for d in r.decisions if d.outcome_id == f"{r.run_id}/{t}/{rep}"]
             rows.append([_e(r.run_id), _e(t), str(rep), _e(o.status.label), f"{o.credit:.3f}", _e(o.manifest_id),
                          _e(", ".join(f"{d.kind.name}:{d.decision_id}" for d in decs) or "-"), _e(text), _e(outs)])
@@ -143,7 +161,8 @@ def _render(store: Store, catalog: Catalog, out: Path, draft: bool, pub_note: st
                 _page(f"{s.config_id}: {_title(key)}", _drill(store, cohort, s.config_id, c.population), draft), "utf-8")
             cost = f"${s.usd_measured:.2f} measured" + (f" + ${s.usd_estimated:.2f} estimated" if s.usd_estimated else "")
             rows.append([_e(s.config_id), link, ", ".join(f"{k.name}={v}" for k, v in sorted(s.status_counts.items(), key=lambda kv: kv[0].name)),
-                         f"{s.critical_error_rate:.3f}", str(s.n_runs), "-" if s.run_to_run_sd is None else f"{s.run_to_run_sd:.3f}",
+                         f"{s.critical_errors} critical of {s.n_scored} scored ({sum(s.status_counts.values()) - s.n_scored} not scored)",
+                         str(s.n_runs), "-" if s.run_to_run_sd is None else f"{s.run_to_run_sd:.3f}",
                          f"{s.wall_s:.1f}s", cost, f"assisted ({s.human_minutes:g} min)" if s.human_minutes else "no"])
         prow = [[_e(p.a), _e(p.b), _fmt(p.diff), _fmt(p.diff_task_level), _e(p.call.value), _e(_statement(c, p))] for p in c.pairs]
         body.append(
@@ -151,7 +170,7 @@ def _render(store: Store, catalog: Catalog, out: Path, draft: bool, pub_note: st
             f"(min {an.min_groups}); margin {an.min_meaningful_diff}; {an.bootstrap_resamples} cluster-bootstrap resamples, "
             f"multiplicity {_e(an.multiplicity)}. Task-level interval is a sensitivity figure only. "
             f"Unresolved outcomes: {len(c.unresolved)}.</p>"
-            + _table(["config", "mean task credit [95% CI]", "status counts", "critical error rate", "runs",
+            + _table(["config", "mean task credit [95% CI]", "status counts", "critical errors", "runs",
                       "run-to-run sd", "wall", "cost", "assisted"], rows)
             + _table(["A", "B", "A minus B [95% CI, group bootstrap]", "task-level (sensitivity)", "call", "statement"], prow))
     cov = compare.coverage(catalog, store)
@@ -165,10 +184,20 @@ def _render(store: Store, catalog: Catalog, out: Path, draft: bool, pub_note: st
         f"<li>{_e(str(p.ref))}: {_e('; '.join(p.limitations) or 'no stated limitations')}</li>" for p in catalog.packages.values()) + "</ul>")
     body.append("<h2>Incompatibilities</h2>" + _table(["config", "package", "mode", "track", "reasons"], [
         [_e(i.config_id), _e(str(i.package)), _e(i.mode), _e(i.track), _e("; ".join(i.reasons))] for i in store.incompatibilities()]))
-    body.append("<h2>Corrections</h2>" + _table(["at", "author", "kind", "target", "reason"], [
-        [_e(c.at.isoformat()), _e(c.author), _e(c.kind), _e(c.target), _e(c.reason)] for c in store.corrections()]))
-    rep_rows = []
+    body.append("<h2>Corrections</h2>" + _table(["at", "author", "kind", "target", "reason class", "reason"], [
+        [_e(c.at.isoformat()), _e(c.author), _e(c.kind), _e(c.target), _e(c.reason_class or "-"), _e(c.reason)]
+        for c in store.corrections()]))
     runs = list(store.runs())
+    confirmed = {c.target: c.author for c in store.corrections() if c.kind is CorrectionKind.CONFIRM_VOID}
+    body.append("<h2>Voided runs</h2><p>Excluded from every cohort; shown so a void cannot hide a score.</p>" + _table(
+        ["run", "config", "evaluator", "reason class", "reason", "voided by", "confirmed by", "mean credit", "status counts"],
+        [[_e(r.run_id), _e(r.manifest.plan.config.config_id), _e(r.manifest.evaluator), _e(r.void.reason_class),
+          _e(r.void.reason), _e(r.void.author), _e(confirmed.get(r.run_id, "unconfirmed")),
+          f"{statistics.fmean(o.credit for o in r.outcomes.values()):.3f}",
+          _e(", ".join(f"{s.name}={n}" for s, n in sorted(Counter(o.status for o in r.outcomes.values()).items(),
+                                                            key=lambda kv: kv[0].name)))]
+         for r in runs if r.void is not None and r.manifest.plan.purpose is Purpose.SCORED]))
+    rep_rows = []
     for r in runs:
         p = r.manifest.plan
         if p.purpose is not Purpose.REPRODUCTION:
@@ -196,29 +225,33 @@ def build(store: Store, catalog: Catalog, out: Path) -> Path:
 
 
 def publish(store: Store, catalog: Catalog, *, editor: str) -> Path:
-    """Immutable snapshot at store/publications/<pub_id>/ where pub_id =
-    date + content hash of the rendered site. Raises PublishBlocked if blockers() is non-empty.
-    Never overwrites; prior publications stay and the index links them all
-    (historical results, FR-11). Corrections after publication are Correction
+    """Immutable snapshot at store/publications/<pub_id>/ where pub_id = date + content hash of
+    the rendered site without its history list. Raises PublishBlocked if blockers() is non-empty.
+    Idempotent: the same evidence returns the existing publication. Never overwrites; a new
+    publication is staged and renamed into place whole. Prior publications stay and the index
+    links them all (historical results, FR-11). Corrections after publication are Correction
     records and appear in the next publication's history."""
     if bl := blockers(store, catalog):
         raise PublishBlocked(bl)
     base = store.root / "publications"
-    prior = sorted(p.name for p in base.iterdir()) if base.exists() else []
-    note = "<h2>Publications</h2><ul>" + "".join(f'<li><a href="../{_e(p)}/index.html">{_e(p)}</a></li>' for p in prior) + "</ul>"
     with tempfile.TemporaryDirectory() as tmp:
-        _render(store, catalog, Path(tmp), draft=False, pub_note=note)
+        _render(store, catalog, Path(tmp), draft=False)
         h = hashlib.sha256()
         for f in sorted(x for x in Path(tmp).rglob("*") if x.is_file()):
             h.update(f.relative_to(tmp).as_posix().encode() + b"\0" + f.read_bytes())
-        when = datetime.now(timezone.utc)
-        pub_id = f"{when.date().isoformat()}-{h.hexdigest()[:12]}"
-        dest = base / pub_id
-        if dest.exists():
-            return dest
-        shutil.copytree(tmp, dest)
-    (dest / "publication.json").write_text(json.dumps({"pub_id": pub_id, "editor": editor, "published_at": when.isoformat()}))
-    return dest
+    digest = h.hexdigest()[:12]
+    prior = sorted(p.name for p in base.iterdir() if not p.name.startswith(".")) if base.exists() else []
+    if same := [p for p in prior if p.endswith(f"-{digest}")]:
+        return base / same[0]
+    when = datetime.now(timezone.utc)
+    pub_id = f"{when.date().isoformat()}-{digest}"
+    stage = base / f".{pub_id}.staging"
+    shutil.rmtree(stage, ignore_errors=True)
+    note = "<h2>Publications</h2><ul>" + "".join(f'<li><a href="../{_e(p)}/index.html">{_e(p)}</a></li>' for p in prior) + "</ul>"
+    _render(store, catalog, stage, draft=False, pub_note=note)
+    (stage / "publication.json").write_text(json.dumps({"pub_id": pub_id, "editor": editor, "published_at": when.isoformat()}))
+    os.rename(stage, base / pub_id)
+    return base / pub_id
 
 
 def export(store: Store, catalog: Catalog, out: Path) -> Path:

@@ -16,7 +16,7 @@ from observatory.model import (  # noqa: E402
     AdapterRef, AnalysisPlan, Attempt, BenchmarkPackage, Budget, BuildRecord, Cohort, ConfigurationIdentity,
     Correction, CorrectionKind, Cost, Disclosure, ExecutableCheck, Incomparable, LadderLevel, Mode, Outcome,
     PackageRef, Purpose, RunManifest, RunPlan, RunRecord, ScorerKind, ScoringDecision, Seal, Split, Status,
-    Task, Track, Verdict,
+    Task, Track, Verdict, VoidReason,
 )
 
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -46,7 +46,7 @@ def run(cfg: ConfigurationIdentity, scores: dict[str, float], *, mode: Mode = Mo
     """scores: task_id -> value; a planned task absent from `scores` has no attempt at all."""
     plan = RunPlan(cfg, package, mode, Track.SEMANTIC_TASK, purpose, 1,
                    task_ids or tuple(t.task_id for t in TASKS), BUDGET)
-    m = RunManifest(f"{cfg.config_id}-{mode}-{package.content_hash}", plan, NOW, "jay", (), ())
+    m = RunManifest(plan, NOW, "jay", (), ())
     attempts = tuple(Attempt(m.run_id, t, 0, 1, None, "out.json", "", 1.0, Cost(), NOW) for t in scores)
     decisions = tuple(
         ScoringDecision(f"{m.run_id}/{t}/0", m.manifest_id, ScorerKind.EXECUTABLE, "v1", Status.SCORED, Verdict(v),
@@ -94,7 +94,7 @@ class HardRules(unittest.TestCase):
     def test_smoke_and_voided_runs_cannot_be_ranked(self):
         with self.assertRaises(Incomparable):
             cohort(run(config("a"), ALL, purpose=Purpose.SMOKE))
-        void = Correction(NOW, "ed", CorrectionKind.VOID_RUN, "x", "harness bug")
+        void = Correction(NOW, "ed", CorrectionKind.VOID_RUN, "x", "scorer crashed", VoidReason.HARNESS_BUG)
         with self.assertRaises(Incomparable):
             cohort(run(config("a"), ALL, void=void))
 

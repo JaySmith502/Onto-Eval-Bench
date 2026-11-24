@@ -25,24 +25,65 @@ from __future__ import annotations
 import enum
 import hashlib
 import json
+import re
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime
 
 METHODOLOGY_VERSION = "1"
 """Bump when the status->credit rule or statistics change. Stamped on every report."""
+
+SCHEMA_VERSION = "2"
+"""Bump when any stored record's fields change. Stamped on every stored line and mixed into every
+content id, so records of another shape are refused on read instead of silently re-identified."""
+
+ID_FIELDS = {"RunPlan": "plan_id", "RunManifest": "manifest_id", "ConfigurationIdentity": "identity_hash",
+             "ScoringDecision": "decision_id"}
+"""Content ids the store writes beside each record and verifies when it reads the record back."""
 
 
 class Incomparable(ValueError):
     """Results that must not share a ranking were put into one Cohort."""
 
 
+_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def check_id(kind: str, value: str) -> str:
+    """Ids (task, config, method, package, run, people) become path components; anything else is
+    refused where it enters (catalog, CLI, store paths)."""
+    if not isinstance(value, str) or not _ID.fullmatch(value):
+        raise ValueError(f"{kind} {value!r} must match {_ID.pattern}")
+    return value
+
+
+def canonical(o: object, *, with_ids: bool = False) -> object:
+    """The one projection of facts to JSON values: what content ids hash, and (with_ids) what the store
+    writes. Init fields only; enums by value (Status by name); sets sorted."""
+    if is_dataclass(o) and not isinstance(o, type):
+        d = {f.name: canonical(getattr(o, f.name), with_ids=with_ids) for f in fields(o) if f.init}
+        if with_ids and (k := ID_FIELDS.get(type(o).__name__)):
+            d[k] = getattr(o, k)
+        return d
+    if isinstance(o, Status):
+        return o.name
+    if isinstance(o, enum.Enum):
+        return o.value
+    if isinstance(o, datetime):
+        return o.isoformat()
+    if isinstance(o, (set, frozenset)):
+        return sorted(canonical(x, with_ids=with_ids) for x in o)
+    if isinstance(o, Mapping):
+        keys = ((canonical(k), v) for k, v in o.items())
+        return {"/".join(map(str, k)) if isinstance(k, list) else str(k): canonical(v, with_ids=with_ids) for k, v in keys}
+    if isinstance(o, (tuple, list)):
+        return [canonical(x, with_ids=with_ids) for x in o]
+    return o
+
+
 def content_id(obj: object) -> str:
-    """sha256 over canonical JSON, first 16 hex chars. Equal content <=> equal id."""
-    def canon(o: object) -> object:
-        return sorted(map(str, o)) if isinstance(o, (set, frozenset)) else str(o)
-    raw = obj if not hasattr(obj, "__dataclass_fields__") else asdict(obj)  # type: ignore[arg-type]
-    blob = json.dumps(raw, sort_keys=True, separators=(",", ":"), default=canon)
+    """sha256 over the schema version and the canonical projection, first 16 hex chars."""
+    blob = json.dumps([SCHEMA_VERSION, canonical(obj)], sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
@@ -86,8 +127,9 @@ ADAPTER_REPORTABLE = frozenset({Status.UNSUPPORTED, Status.INVALID_OUTPUT, Statu
 """Statuses an adapter response may carry besides success. TIMEOUT,
 BUILD_FAILURE, BUDGET_EXHAUSTED and INTERRUPTED are observed by the runner."""
 
-RETRYABLE = frozenset({Status.RUNTIME_FAILURE, Status.TIMEOUT, Status.INTERRUPTED})
-"""Infrastructure failures only, so a retry can never re-roll a wrong answer."""
+RETRYABLE = frozenset({Status.TIMEOUT, Status.INTERRUPTED})
+"""Failures the runner observed (a timeout; a kill by signal or a harness crash mid-attempt). An
+adapter-reported failure is final, so an adapter cannot discard an answer it dislikes and re-sample."""
 
 
 def _require_origin(status: Status | None, origin: Origin, who: str) -> None:
@@ -164,8 +206,16 @@ class InterventionKind(enum.StrEnum):
 
 
 class CorrectionKind(enum.StrEnum):
-    VOID_RUN = "void_run"   # removes a run from cohorts; always listed in reports
+    VOID_RUN = "void_run"           # removes a run from cohorts; listed with its scores in every report
+    CONFIRM_VOID = "confirm_void"   # a second person's sign-off on a VOID_RUN; publication waits for it
     ERRATUM = "erratum"
+
+
+class VoidReason(enum.StrEnum):
+    """Why a run may be voided. None of them is "the result was bad"."""
+    HARNESS_BUG = "harness_bug"                    # a defect in the observatory itself
+    INFRASTRUCTURE = "infrastructure"              # host or service outage outside the candidate
+    PROTOCOL_VIOLATION = "protocol_violation"      # the evaluator broke the run protocol
 
 
 # ------------------------------------------------------------------ registry
@@ -188,6 +238,7 @@ class Candidate:
 class AdapterRef:
     command: tuple[str, ...]   # argv prefix; the runner appends the verb
     version: str
+    digest: str = ""           # sha256 over the command's files (set by catalog.load), so an edited adapter is a new identity
 
 
 @dataclass(frozen=True)
@@ -375,13 +426,17 @@ class Incompatibility:
 
 @dataclass(frozen=True)
 class RunManifest:
-    """Written once, before the first attempt."""
-    run_id: str
+    """Written once, before the first attempt. One run per plan: run_id is the plan_id, and the
+    evaluator is metadata, so re-executing a plan resumes it and never samples it again."""
     plan: RunPlan
     started_at: datetime
     evaluator: str
     environment: tuple[tuple[str, str], ...]
     isolation: tuple[tuple[str, str], ...]     # what was actually enforced, e.g. network: not_enforced
+
+    @property
+    def run_id(self) -> str:
+        return self.plan.plan_id
 
     @property
     def manifest_id(self) -> str:
@@ -411,6 +466,8 @@ class Attempt:
     wall_s: float
     cost: Cost
     finished_at: datetime
+    model_used: tuple[str, str] | None = None   # as the adapter reported it; must equal the imposed model in CONTROLLED
+    adapter_version: str | None = None          # as the adapter reported it
 
     def __post_init__(self) -> None:
         _require_origin(self.failure, Origin.EXECUTION, "the runner")
@@ -418,6 +475,17 @@ class Attempt:
     @property
     def outcome_id(self) -> str:
         return f"{self.run_id}/{self.task_id}/{self.repetition}"
+
+
+@dataclass(frozen=True)
+class AttemptStart:
+    """Written before each adapter invocation. A start with no Attempt after it is a harness crash
+    mid-attempt; the runner resolves it to INTERRUPTED, which spends that attempt."""
+    run_id: str
+    task_id: str
+    repetition: int
+    attempt_no: int
+    at: datetime
 
 
 @dataclass(frozen=True)
@@ -488,8 +556,7 @@ class ScoringDecision:
 
     @property
     def decision_id(self) -> str:
-        return content_id([self.outcome_id, self.kind, self.scorer_id, self.status.name,
-                           self.verdict and asdict(self.verdict), list(self.supersedes)])
+        return content_id([self.outcome_id, self.kind, self.scorer_id, self.status, self.verdict, list(self.supersedes)])
 
 
 @dataclass(frozen=True)
@@ -499,6 +566,11 @@ class Correction:
     kind: CorrectionKind
     target: str                  # run_id or publication id
     reason: str
+    reason_class: VoidReason | None = None   # required exactly on VOID_RUN
+
+    def __post_init__(self) -> None:
+        if (self.kind is CorrectionKind.VOID_RUN) != (self.reason_class is not None):
+            raise ValueError("a void states its reason class; other corrections do not")
 
 
 # ----------------------------------------------------------------- derived views
@@ -574,6 +646,7 @@ class RunRecord:
     decisions: tuple[ScoringDecision, ...]          # full history, superseded included
     void: Correction | None = None
     outcomes: Mapping[tuple[str, int], Outcome] = field(init=False, compare=False)
+    final_attempts: Mapping[tuple[str, int], Attempt] = field(init=False, compare=False)   # the one per-slot rule
 
     def __post_init__(self) -> None:
         final: dict[tuple[str, int], Attempt] = {}
@@ -581,6 +654,7 @@ class RunRecord:
             k = (a.task_id, a.repetition)
             if k not in final or a.attempt_no > final[k].attempt_no:
                 final[k] = a
+        object.__setattr__(self, "final_attempts", final)
         by_outcome: dict[str, list[ScoringDecision]] = {}
         for d in self.decisions:
             by_outcome.setdefault(d.outcome_id, []).append(d)
@@ -606,7 +680,8 @@ class Cohort:
     Checked on construction, whoever constructs it: package matches key; every
     run has this key, purpose SCORED, is not voided, and plans exactly
     package.eligible(key.track, HELDOUT); runs are filed under their own
-    config. `runs` holds ALL such runs of each member."""
+    config, and all runs of one config share one identity_hash. `runs` holds ALL
+    such runs of each member."""
     key: ComparabilityKey
     package: BenchmarkPackage
     runs: Mapping[str, tuple[RunRecord, ...]]       # config_id -> runs
@@ -618,6 +693,9 @@ class Cohort:
         for config_id, records in self.runs.items():
             if not records:
                 raise Incomparable(f"{config_id} has no runs")
+            if len(hashes := {r.manifest.plan.config.identity_hash for r in records}) > 1:
+                raise Incomparable(f"{config_id} was edited between runs (identities {sorted(hashes)}); "
+                                   "give the edited configuration a new config_id")
             for r in records:
                 p = r.manifest.plan
                 if p.key != self.key:

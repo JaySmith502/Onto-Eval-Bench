@@ -76,8 +76,9 @@ class Call(enum.StrEnum):
 class ConfigSummary:
     config_id: str
     score: Interval                     # mean task credit; task credit = mean over all runs x reps
-    critical_error_rate: float
-    status_counts: Mapping[Status, int]  # always printed beside the score
+    critical_errors: int                 # among SCORED outcomes; never shown as a rate, so failing to be
+    n_scored: int                        # scored cannot dilute it: "k critical of n scored (m not scored)"
+    status_counts: Mapping[Status, int]  # always printed beside the score; values sum to all planned outcomes
     n_runs: int
     run_to_run_sd: float | None
     wall_s: float
@@ -161,7 +162,7 @@ def compare(cohort: Cohort, configs: Iterable[str] | None = None,
             trace.setdefault(o.task_id, []).append((o.manifest_id, o.decision_id))
         summaries.append(ConfigSummary(
             c, interval(credit[c], cluster_boot(credit[c], f"{plan.seed}:{c}")),
-            sum(o.verdict.critical_error for o in scored) / len(scored) if scored else 0.0,
+            sum(o.verdict.critical_error for o in scored), len(scored),
             dict(Counter(o.status for _, o in outs)), len(cohort.runs[c]),
             statistics.stdev(per_run) if len(per_run) > 1 else None,
             sum(a.wall_s for a in atts) + sum(r.build.wall_s for r in cohort.runs[c] if r.build),

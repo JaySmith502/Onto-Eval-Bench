@@ -10,13 +10,15 @@ The P0 MVP (PRD FR-01..FR-13, §22, §23) must run about three methods plus two 
 obs check                                                   # validate catalog/: taxonomy, candidates, configs, packages
 obs plan ontoA-gpt5 relfin@1.0.0 --mode controlled --smoke  # CONFIG split only, never ranked
 obs plan ontoA-gpt5 relfin@1.0.0 --mode controlled --reps 3 # -> plan file [--out F, --evaluator E], or a persisted incompatibility
-obs run plans/<plan_id>.json [--evaluator jay]               # resumable; seals the run when done (plan file = parameters + plan_id; re-derived)
+obs run plans/<plan_id>.json [--evaluator jay]               # one run per plan: re-running resumes, never re-samples; seals when done
 obs intervene <run_id> --kind hint --minutes 5 --note "restarted vector index"
 obs score <run_id>                                          # executable checks
 obs review-sample <run_id>... --rate 0.1 --seed 7           # human spot checks; disagreement => dispute
-obs review <run>/<task>/<rep> --value 0.5 --rationale "..." --adjudicate
+obs review <run>/<task>/<rep> --value 0.5 --rationale "..." --adjudicate   # only on a live dispute, by a third party
 obs compare                                                 # one table per cohort, never merged
-obs reproduce <run_id> --evaluator ana && obs run ...       # second evaluator (must differ from the original's)
+obs reproduce <run_id> --evaluator ana && obs run ...       # per cohort member; ana must have run none of its runs
+obs void <run_id> --reason-class infrastructure --reason "..." # listed with its scores; blocks publication until...
+obs confirm-void <run_id> --author lee                      # ...someone other than the voider confirms it
 obs verify <run_id>                                         # executable scoring reproduces exactly?
 obs report site/                                            # draft site + export bundle
 obs publish                                                 # refuses and lists blockers until clean (report.PublishBlocked)
@@ -36,26 +38,27 @@ for key, cohort in compare.cohorts(store, cat).items():      # a partition: mixi
         print(key.mode, key.package, pair.a, pair.b, pair.diff, pair.call)
 ```
 
-An adapter is an executable that speaks JSON over stdin and stdout with four verbs (`setup`, `build`, `run-task`, `teardown`). It never sees reference answers, never assigns a final status, and cannot declare a task not applicable.
+An adapter is an executable that speaks JSON over stdin and stdout with four verbs (`setup`, `build`, `run-task`, `teardown`). It is handed only staged copies of the build inputs, the task input, and scratch directories outside the catalog and the store; no request names a package or store path. The filesystem is not sandboxed, so an adapter running as the evaluator's user could still search the disk for reference answers, and every manifest records `filesystem: not_enforced`. An adapter never assigns a final status and cannot declare a task not applicable. In controlled mode every request carries the imposed model and the adapter must echo the model it used.
 
 ## Shape
 
 Nine modules in `src/observatory/`, in data-flow order: `model` (facts and the comparability kernel) → `catalog` (authored TOML in, every check at load) → `adapter` (executable protocol, isolated invoke) → `runner` (plan and execute) → `store` (append-only files) → `scoring` (checks, reviews, verification) → `compare` (cohorts, population, statistics, coverage) → `report` (site, publish, export) → `cli`.
 
-**Facts are appended; everything else is derived.** The records are `RunPlan`, `RunManifest`, `BuildRecord`, `Attempt`, `Intervention`, `Seal`, `ScoringDecision`, `Incompatibility` and `Correction`, all frozen. Nothing stores a status, score or aggregate. `RunRecord.__post_init__` computes `outcomes`, which is total over planned (task, repetition), through `resolve_outcome`, the one mapping from facts to a status. `Outcome.credit` is the one place a status becomes a number. SCORED earns its verdict and every other status earns 0, so the PRD's "predefine how each status affects each metric" is one line, not a table that can drift (per single source of truth).
+**Facts are appended; everything else is derived.** The records are `RunPlan`, `RunManifest`, `BuildRecord`, `AttemptStart`, `Attempt`, `Intervention`, `Seal`, `ScoringDecision`, `Incompatibility` and `Correction`, all frozen. Nothing stores a status, score or aggregate. `RunRecord.__post_init__` computes `outcomes`, which is total over planned (task, repetition), through `resolve_outcome`, the one mapping from facts to a status. `Outcome.credit` is the one place a status becomes a number. SCORED earns its verdict and every other status earns 0, so the PRD's "predefine how each status affects each metric" is one line, not a table that can drift (per single source of truth).
 
 **Hard rules, enforced in constructors:**
 
 - *Controlled is never ranked with native, and incompatible versions are never ranked together.* `ComparabilityKey = (exact PackageRef incl. hash, mode, track, imposed model if controlled)` is derived from the plan. `Cohort.__post_init__` rejects any run whose key differs. `compare.cohorts` returns a partition by key, and no function takes two cohorts.
 - *Omitting tasks cannot improve an aggregate.* `BenchmarkPackage.eligible(track, split)` is the only definition of a plan's tasks. `Cohort` rejects any plan that lists other tasks. Every missing, failed, unsupported, timed-out or unresolved outcome stays in the denominator at 0. "Not applicable" is not a status: applicability belongs to the package, for every candidate at once, and the population never depends on any candidate's outcomes.
-- *No rerun until favourable.* A cohort pools every non-voided SCORED run of a configuration, and callers choose configurations, never runs. `Store.append_attempt` is slot-gated: no attempt outside the plan, past `repetitions`, or past `max_attempts`. Retries happen only for `RETRYABLE` infrastructure failures. Removing a run takes a public `VOID_RUN` correction.
+- *No rerun until favourable.* The run id is the plan id, so a plan has exactly one run whoever executes it; more sampling needs a new pre-registered plan, and every run of every plan pools. A cohort pools every non-voided SCORED run of a configuration, all under one `identity_hash`, and callers choose configurations, never runs. `Store.append_start` is the slot gate: no attempt outside the plan, past `repetitions`, past `max_attempts`, or after a non-`RETRYABLE` result. Only failures the runner observed (timeout, a kill by signal, a harness crash mid-attempt) are retryable; an adapter-reported failure is final. A start record precedes each invocation, so a crash mid-attempt becomes INTERRUPTED and spends the attempt. Removing a run takes a `VOID_RUN` correction with a reason class, confirmed by a second person before publication, and every report lists voided runs with their scores.
+- *Stored facts keep their identity.* Each stored line carries `schema_version`, and records carry their content ids (`plan_id`, `manifest_id`, `identity_hash`, `decision_id`). The store reads a record back only if its keys are exactly the current fields and its ids still hash from its content, so an edited ledger file or a changed dataclass shape fails loudly instead of being re-identified.
 - *Every score traces to a manifest and a decision.* `Outcome` refuses SCORED without `manifest_id` and `decision_id`. `ConfigSummary.trace` carries both through to the report.
 
-**Scoring disagreement is a state the data already has.** Executable checks, reviews and adjudications are all `ScoringDecision`s. A review never supersedes anything, so a disagreeing review leaves two current decisions and the outcome resolves to UNRESOLVED. An adjudication must supersede the decisions it settles. UNRESOLVED blocks publication.
+**Scoring disagreement is a state the data already has.** Executable checks, reviews and adjudications are all `ScoringDecision`s. A review never supersedes anything, so a disagreeing review leaves two current decisions and the outcome resolves to UNRESOLVED. An adjudication must supersede the decisions it settles, is refused when they agree, and is refused from anyone who made one of them. A review of an executable task waits for the check's decision, and a rubric verdict must be on the rubric's scale. A check that raises is the package's bug: the outcome stays UNRESOLVED and is never charged to the candidate. UNRESOLVED blocks publication.
 
-**Adapters are executables** (per boundary-discipline). Each verb call runs in its own process group with rlimits, a timeout kill, a scrubbed environment and its own working directory. The manifest records which isolation was actually enforced. Wire dicts never leave `adapter.py`.
+**Adapters are executables** (per boundary-discipline). Each verb call runs in its own process group with rlimits (address space, CPU, file size), a timeout kill, a scrubbed environment and a throwaway working directory, and talks through anonymous temporary files rather than pipes, so a stray grandchild cannot stall the harness past the timeout. Every number an adapter reports is validated in `adapter.py`; a bad cost is INVALID_OUTPUT. The manifest records which isolation was actually enforced. Wire dicts never leave `adapter.py`.
 
-**Storage is append-only JSON/JSONL in git.** Each file has one writer kind: the runner writes attempts, the operator writes interventions, and each scorer writes its own decisions file. Readers merge (per separate-before-serializing-shared-state). At MVP scale this means thousands of lines. Git provides the audit trail and the clone-to-reproduce path.
+**Storage is append-only JSON/JSONL in git.** Each file has one writer kind: the runner writes starts and attempts (under an exclusive run lock), the operator writes interventions, and each scorer writes its own decisions file. Readers merge (per separate-before-serializing-shared-state). Write-once files appear whole or not at all; an unterminated final log line is a crashed write, ignored on read with a warning and cut off before the next append. At MVP scale this means thousands of lines. Git provides the audit trail and the clone-to-reproduce path.
 
 **Statistics are pre-registered.** `AnalysisPlan` (margin, resamples, seed, `min_groups`, multiplicity) sits inside the package hash. `compare.compare` takes no tuning arguments. It uses a paired cluster bootstrap over the task groups. With fewer than `min_groups` groups every call is INCONCLUSIVE. A task-level interval is shown beside it as a sensitivity figure only.
 
@@ -80,7 +83,9 @@ Four runners: opus (A), fable (B), sonnet (C), haiku (D). All four converged on 
 - We accept exact package-hash equality as the comparability rule: a one-task typo fix splits the cohort. In exchange there is a rule nobody can argue about. Re-running the reference cohort is what the PRD asks for anyway.
 - We accept that all members share the full eligible set, so there is no per-candidate "common subset". The only population change is a tag filter applied to everyone. This may look like a skipped PRD §14 requirement, but with package-owned eligibility the common subset is the eligible set.
 - We accept that UNRESOLVED scores 0 in drafts in exchange for drafts that are always computable. Publication refuses while any outcome is unresolved.
-- We accept no network isolation in the MVP. Each manifest records `network: not_enforced`.
+- We accept no network or filesystem isolation in the MVP. Each manifest records `network: not_enforced` and `filesystem: not_enforced`. Not handing the adapter package or store paths stops the casual leak, not a determined one.
+- We accept that TIMEOUT and INTERRUPTED stay retryable, so an adapter that stalls on purpose can buy one more sample of a task, bounded by `max_attempts`. Making them final would charge real infrastructure flakes to the candidate.
+- We accept that a check which raises on malformed output leaves that outcome UNRESOLVED (blocking publication until reviewed) instead of INVALID_OUTPUT. Checks must answer `valid=False` for output they cannot interpret.
 - We accept running package checks in process (trusted and hash-versioned). Untrusted adapter output reaches checks only as data.
 - We accept a full scan on every read in exchange for having no index to keep in sync.
 
@@ -99,17 +104,32 @@ Four runners: opus (A), fable (B), sonnet (C), haiku (D). All four converged on 
   - **`adapter.isolation(budget)`** (new function). The manifest is written before the first adapter call, yet must record what was enforced. It probes the limits in a throwaway child (a pipe written from `preexec_fn`) and `runner.execute` stores the result. On macOS `RLIMIT_AS` is reported `not_enforced`; `RLIMIT_CPU` is enforced. Sketch missed the ordering.
   - **`Store.exists(run_id)`** (new). Prefix matching in `Store.run` could return `X-jay2` for a missing `X-jay`; the runner needs an exact test. **`store.to_jsonable`** (new, public). `report.export` must dump dataclasses, and the serialization logic stays in `store.py` instead of being copied. Sketch missed export's need.
   - **`report.PublishBlocked`** (new exception). `publish` returns a path, so refusal needs a typed carrier for the blocker list.
-  - **Run id is `<plan_id>-<evaluator>`.** The sketch did not say how "existing unsealed run for plan.plan_id" is found. A second `execute` of the same plan by the same evaluator resumes or returns the sealed run, so a rerun cannot re-sample. A second evaluator gets a separate run.
   - **The plan file holds parameters, not a serialized `RunPlan`.** `obs run` re-derives the plan with `runner.plan` and refuses if its `plan_id` differs. Serialization stays inside `store.py`, and a stale plan cannot run against a changed catalog.
   - **`PackageRef.content_hash` covers every file under the package dir**, not only `package.toml`, `tasks.toml` and `checks/*`. Task inputs and references were otherwise unhashed. `packages.lock` pins a package on first load; later loads error if the hash moves.
   - **Adapter command paths** stay relative in the identity (so the identity hash is portable) and become absolute at run time against `catalog.root.parent`.
   - **Holm.** `compare` takes a bootstrap p-value per pair, `2*min(share of group-bootstrap diffs <= 0, share >= 0)`, applies Holm step-down at alpha 0.05, and demotes a directional CI call (`A_BETTER`/`B_BETTER`) to `INCONCLUSIVE` when Holm does not reject. `EQUIVALENT` is never demoted. With `multiplicity = "none"` calls are CI-only. Intervals are 95% percentile. Bootstrap seeds are strings built from `plan.seed` and the config ids, so a pair's numbers do not depend on which other configs are selected.
   - **Tag filter.** In `population` a task must carry every tag given.
-  - **`critical_error_rate`** is over SCORED outcomes (a critical error is a property of a verdict); status counts show the rest.
   - **`coverage`** does not count MISSING outcomes as evidence for EVALUATED (a half-run run would otherwise look measured). An `Incompatibility` marks a tag UNSUPPORTED when the incompatible package has a task with that tag.
-  - **Not implemented:** `INTERRUPTED` attempts (a crash-lost in-flight attempt is simply re-run, since no start marker is written); the per-config assessment pages of PRD §19 (the index table and the per-cohort drill-down pages carry that content); the catalog check "identity hashes unique per slug" (config id is the file name and part of the hash, so it cannot collide). Seal log hashes are computed and checked at seal time but not re-verified on read.
-  - **Checks that raise** make that output INVALID_OUTPUT with the exception as rationale, because untrusted output may break a check.
+  - **Not implemented:** the per-config assessment pages of PRD §19 (the index table and the per-cohort drill-down pages carry that content). Seal log hashes are computed and checked at seal time but not re-verified on read.
   - **Export** is one `export/bundle.json`. For RESTRICTED tasks, attempt errors, output refs and decision rationales are redacted too, not only inputs, references and outputs. `report.build` and `publish` share one renderer; published pages carry no draft banner and list prior publications.
+
+- Adversarial-review hardening (branch `harden-hard-rules`). Each exploit is a test in `tests/test_adversarial.py`. Public-surface changes, each with its reason:
+  - **`RunManifest.run_id` is now a property equal to `plan.plan_id`** (the field is gone; the constructor is `RunManifest(plan, started_at, evaluator, environment, isolation)`). A free-text evaluator in the run id let anyone re-sample a plan under a new name and pool both runs. `tests/test_invariants.py` was updated for the new constructor only.
+  - **`model.AttemptStart`, `Store.append_start`, `Store.open_starts`, `starts.jsonl`.** The slot gate moved from `append_attempt` to `append_start`, which also refuses a next attempt after a non-retryable result; `append_attempt` only finishes an open start. Needed so a crash mid-attempt is visible and spends the attempt. The end-to-end store test was rewritten for start-then-attempt.
+  - **`RETRYABLE = {TIMEOUT, INTERRUPTED}`**; a kill by signal is now INTERRUPTED, not RUNTIME_FAILURE. An adapter could report `runtime_failure` on an answer it disliked and get a free resample.
+  - **`Correction.reason_class: VoidReason | None`, `CorrectionKind.CONFIRM_VOID`, `obs void --reason-class`, `obs confirm-void`.** A void must say why, a second person must confirm it before publication, and the report lists voided runs with their scores. A silent void was a cherry-pick. The invariant test's void now states a reason class.
+  - **`model.canonical`, `SCHEMA_VERSION`, `ID_FIELDS`** replace `asdict` in `content_id`; `store.to_jsonable` is `canonical(with_ids=True)`. The store's reader is now strict (exact keys, discriminated unions, ids verified). Before, a missing key took its default and `ExecutableCheck | Rubric` always read back as `ExecutableCheck`.
+  - **`adapter.invoke(..., artifact_dir=...)`** replaces `workdir`. The adapter's cwd is now a throwaway temp dir, so files it writes there are not kept (the old docstring's "artifacts are collected" was a side effect of running inside the store, which also let an adapter append to `attempts.jsonl`). `stderr.log` is still kept.
+  - **`adapter.AdapterNotStartable`.** A command that cannot be spawned aborts `execute` before anything is recorded; it was a candidate BUILD_FAILURE. `catalog.load` also refuses an `adapter_command` path argument that is not a file, and `Store` and `catalog.load` resolve their roots, because relative roots broke every adapter call.
+  - **`AdapterRef.digest`** (set by `catalog.load` from the command's files) and **`Cohort` refusing two `identity_hash`es under one config id.** An edited config or adapter under the same id used to pool with its old runs. The fix is to give it a new id.
+  - **`scoring.record_review(store, catalog, ...)`** takes the catalog, which it needs for the task's scorer kind and rubric scale. `Store.append_decision` refuses a decision whose `manifest_id` is not the run's.
+  - **`Attempt.model_used`, `Attempt.adapter_version`** (defaults `None`), and `AdapterResult.model_used`. Controlled mode had no way to see a substituted model.
+  - **`ConfigSummary.critical_errors` and `n_scored`** replace `critical_error_rate`. Timing out a task removed its critical error from the rate's denominator; counts beside "not scored" cannot be diluted.
+  - **`scoring.CheckFault`.** `score_run` writes what it could score and then raises it; a check returning anything but a `CheckResult` raises `TypeError`. `verify` reports faulted outcomes as not reproducing.
+  - **`model.check_id`** (`[A-Za-z0-9][A-Za-z0-9._-]*`) is applied by `catalog.load` (task, config, method, package ids), the CLI (people and run ids) and `Store.append_decision` (path components). Package refs must resolve inside the package dir, and a check entrypoint must name a defined function, not a prefix of one.
+  - **`report.blockers`** now needs, per cohort member, a sealed, non-void REPRODUCTION run of the same identity by an evaluator who ran none of the member's runs, with no UNRESOLVED outcome and executable scoring that verifies; every member run must verify too. The end-to-end fixture now reproduces all three members. **`report.publish`** is idempotent (its id hashes the site without the history list) and renames a staged dir into place.
+  - **`RunRecord.final_attempts`** is the one final-attempt rule, used by the runner, scoring and the report. **`Store.run_lock`** makes a second concurrent `execute` of a run fail. `obs compare --configs/--tags` labels its output exploratory.
+  - Setup now runs on every `execute`, resumes included, so adapters must make it idempotent (stated in the adapter protocol).
 
 ## Open questions and risks
 
@@ -117,7 +137,7 @@ Four runners: opus (A), fable (B), sonnet (C), haiku (D). All four converged on 
 - Should a controlled-mode UNSUPPORTED instead become a plan-time `Incompatibility`?
 - What is `min_meaningful_diff` for the first package, and who fixes it before the first scored run?
 - Do second-evaluator REPRODUCTION runs stay out of rankings (as sketched) and get reported as an agreement view?
-- Is process-level isolation acceptable for the first public run, or do candidate platforms need network restriction from day one?
+- Is process-level isolation acceptable for the first public run, or do candidate platforms need network and filesystem restriction from day one? Without a filesystem sandbox, held-out references on the evaluator's disk are reachable by a determined adapter.
 
 ## Next implementation step
 
