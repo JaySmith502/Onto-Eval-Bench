@@ -15,6 +15,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import re
 import shutil
 import sqlite3
 import sys
@@ -27,6 +28,8 @@ from pathlib import Path
 from typing import Callable
 
 URL = "https://www.sec.gov/files/dera/data/financial-statement-data-sets/{q}.zip"
+NOTES_URL = "https://www.sec.gov/files/dera/data/financial-statement-notes-data-sets/{m}_notes.zip"
+SEGMENTS = re.compile(r"(?:[^=;]+=[^=;]+;)+")   # FSDS segments: "Axis=Member;" pairs, axes in lexical order
 FIRST_QUARTER = "2026q3"
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -137,23 +140,26 @@ TASKS: list[dict] = [
 ]
 
 
+def download(url: str, f: Path, ua: str) -> Path:
+    if f.is_file() and zipfile.is_zipfile(f):
+        return f
+    f.parent.mkdir(parents=True, exist_ok=True)
+    req = urllib.request.Request(url, headers={"User-Agent": ua})
+    part = f.with_suffix(".part")
+    with urllib.request.urlopen(req, timeout=300) as r, open(part, "wb") as out:
+        while chunk := r.read(1 << 20):
+            out.write(chunk)
+    part.replace(f)
+    return f
+
+
 def fetch_zip(cache: Path, ua: str) -> tuple[Path, str]:
     """Newest available quarter: FIRST_QUARTER, then one quarter earlier at a time."""
-    cache.mkdir(parents=True, exist_ok=True)
     y, n = int(FIRST_QUARTER[:4]), int(FIRST_QUARTER[-1])
     for _ in range(12):
         q = f"{y}q{n}"
-        f = cache / f"{q}.zip"
-        if f.is_file() and zipfile.is_zipfile(f):
-            return f, q
         try:
-            req = urllib.request.Request(URL.format(q=q), headers={"User-Agent": ua})
-            part = f.with_suffix(".part")
-            with urllib.request.urlopen(req, timeout=300) as r, open(part, "wb") as out:
-                while chunk := r.read(1 << 20):
-                    out.write(chunk)
-            part.replace(f)
-            return f, q
+            return download(URL.format(q=q), cache / f"{q}.zip", ua), q
         except urllib.error.HTTPError as e:
             if e.code not in (403, 404):
                 raise
@@ -167,7 +173,8 @@ def rows(z: zipfile.ZipFile, name: str):
         yield from csv.DictReader(io.TextIOWrapper(raw, "utf-8", newline=""), delimiter="\t", quoting=csv.QUOTE_NONE)
 
 
-def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
+def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> tuple[dict, dict[str, dict], set[tuple[str, str, str]]]:
+    """Build the database. Returns the tag definitions, the kept filings by adsh and every (adsh, axis, member) in dim."""
     subs = {r["adsh"]: r for r in rows(z, "sub.txt") if r["form"] in v.forms}
     tags = {(r["tag"], r["version"]): r for r in rows(z, "tag.txt")}
     filing_assets: dict[str, float] = {}
@@ -194,13 +201,19 @@ def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
     amenders = {r["cik"] for r in subs.values() if r["form"].endswith("/A")}
     top |= set([c for c in ranked if c in amenders and c not in top][:v.amenders])
     subs = {a: r for a, r in subs.items() if r["cik"] in top}
-    num = {}
+    num, dnum = {}, {}
     for r in rows(z, "num.txt"):
-        if r["adsh"] in subs and not r["segments"] and not r["coreg"] and r["value"]:
-            t = tags.get((r["tag"], r["version"]))
-            if t and t["custom"] == "0":
-                num[(r["adsh"], r["tag"], r["version"], int(r["ddate"]), int(r["qtrs"]), r["uom"])] = float(r["value"])
-    used = sorted({(k[1], k[2]) for k in num})
+        if r["adsh"] not in subs or not r["value"]:
+            continue
+        t = tags.get((r["tag"], r["version"]))
+        if not t or t["custom"] != "0":
+            continue
+        k = (r["adsh"], r["tag"], r["version"], int(r["ddate"]), int(r["qtrs"]), r["uom"])
+        if not r["segments"] and not r["coreg"]:
+            num[k] = float(r["value"])
+        elif v.notes_months and r["segments"] and SEGMENTS.fullmatch(r["segments"]):
+            dnum[(*k, r["segments"])] = float(r["value"])
+    used = sorted({(k[1], k[2]) for k in num} | {(k[1], k[2]) for k in dnum})
     db.unlink(missing_ok=True)
     con = sqlite3.connect(db)
     con.execute("PRAGMA page_size=4096")
@@ -210,6 +223,12 @@ def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
         (a, int(r["cik"]), r["name"], int(r["sic"] or 0), r["countryba"], r["form"], int(r["period"]),
          int(r["fy"] or 0), r["fp"], int(r["filed"]), int(r["prevrpt"] or 0)) for a, r in sorted(subs.items())])
     con.executemany("INSERT INTO num VALUES (?,?,?,?,?,?,?)", [(*k, v) for k, v in sorted(num.items())])
+    facts = sorted(dnum.items())
+    if v.notes_months:
+        con.executemany("INSERT INTO dnum VALUES (?,?,?,?,?,?,?,?,?)",
+                        [(i, *k[:6], k[6].count(";"), x) for i, (k, x) in enumerate(facts, 1)])
+        con.executemany("INSERT INTO dim VALUES (?,?,?)",
+                        [(i, *p.split("=")) for i, (k, _) in enumerate(facts, 1) for p in k[6].split(";") if p])
     con.executemany("INSERT INTO tag VALUES (?,?,?,?,?,?)", [
         (t, ver, tags[t, ver]["datatype"], tags[t, ver]["iord"], tags[t, ver]["crdr"], int(tags[t, ver]["abstract"]))
         for t, ver in used])
@@ -219,7 +238,8 @@ def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
     defs: dict[str, dict] = {}
     for t, ver in used:   # sorted, so the highest taxonomy version of a tag wins
         defs[t] = {"label": tags[t, ver]["tlabel"], "doc": tags[t, ver]["doc"]}
-    return standard_definitions(tags, used) if v.standard_labels else defs
+    pairs = {(k[0], *p.split("=")) for k in dnum for p in k[6].split(";") if p}
+    return (standard_definitions(tags, used) if v.standard_labels else defs), subs, pairs
 
 
 def standard_definitions(tags: dict, used: list[tuple[str, str]]) -> dict[str, dict]:
@@ -244,6 +264,58 @@ def standard_definitions(tags: dict, used: list[tuple[str, str]]) -> dict[str, d
         else:
             defs[t] = {"label": "", "doc": tags[t, ver]["doc"]}
     return defs
+
+
+def short_name(element: str) -> str:
+    """An element's name as FSDS segments write it: the "Statement" prefix and an Axis/Member/Domain suffix cut."""
+    element = element.removeprefix("Statement")
+    for suffix in ("Axis", "Member", "Domain"):
+        if element.endswith(suffix):
+            return element[:-len(suffix)]
+    return element
+
+
+TAXONOMY_ORDER = ("us-gaap", "srt", "dei", "country", "currency", "exch", "stpr")
+
+
+def dimension_labels(notes: list[zipfile.ZipFile], subs: dict[str, dict], pairs: set[tuple[str, str, str]]) -> dict:
+    """Label and documentation of every axis and member in dim, from the notes data sets' tag.tsv.
+
+    Segments drop namespaces, so a name resolves to the filing's own element (version = its adsh) first, with the
+    filer's label, then to a standard element (us-gaap, srt, the rest, ifrs last; Member before Domain) with the
+    publisher's text by the definitions.json rule. A name that resolves to nothing (a typed member value) has no entry.
+    """
+    std: dict[tuple[str, str], dict] = {}
+    own: dict[tuple[str, str, str], list[dict]] = {}
+    for z in notes:
+        for r in rows(z, "tag.tsv"):
+            if r["datatype"] in ("axis", "member"):
+                if r["custom"] == "1":
+                    own.setdefault((r["version"], r["datatype"], short_name(r["tag"])), []).append(r)
+                else:
+                    std[r["tag"], r["version"]] = r
+    by_short: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for (t, ver), r in std.items():
+        by_short.setdefault((r["datatype"], short_name(t)), []).append((t, ver))
+
+    def rank(tv: tuple[str, str]):
+        tax = tv[1].split("/")[0]
+        order = TAXONOMY_ORDER.index(tax) if tax in TAXONOMY_ORDER else len(TAXONOMY_ORDER)
+        return tax == "ifrs", order, tv[0].endswith("Domain"), tv[0], tv[1]
+
+    chosen: dict[str, tuple[str, str]] = {}
+    filer: dict[str, dict] = {}
+    for adsh, axis, member in sorted(pairs):
+        for kind, name in (("axis", axis), ("member", member)):
+            key = f"{kind}:{name}"
+            mine = sorted(own.get((adsh, kind, name), []), key=lambda r: (r["tag"].endswith("Domain"), r["tag"]))
+            if mine:
+                f = filer.setdefault(adsh, {"name": subs[adsh]["name"], "labels": {}})
+                f["labels"][key] = {"element": mine[0]["tag"], "label": mine[0]["tlabel"], "doc": mine[0]["doc"]}
+            elif (kind, name) in by_short:
+                chosen[key] = min(by_short[kind, name], key=rank)
+    defs = standard_definitions(std, sorted(set(chosen.values())))
+    return {"standard": {k: {"element": tv[0], **defs[tv[0]]} for k, tv in sorted(chosen.items())}, "filer": filer}
 
 
 def write_json(path: Path, obj) -> None:
@@ -312,19 +384,26 @@ class Version:
     min_groups: int
     drop_copied_filings: bool = False   # drop a filing whose kept facts copy another filer's filing (co-registrant)
     standard_labels: bool = False       # definitions from publisher releases only (see standard_definitions)
+    notes_months: tuple[str, ...] = ()  # dimensional facts in dnum/dim, labelled from these notes data sets
 
 
 def versions() -> dict[str, Version]:
     import sec_fin_0_2_0 as v2
+    import sec_fin_0_3_0 as v3
     return {
         "0.1.0": Version(("10-K", "10-Q"), 150, 0, SCHEMA, TASKS, limitations_0_1_0, "", 2),
         "0.2.0": Version(v2.FORMS, v2.TOP_N, v2.AMENDERS, v2.SCHEMA, v2.TASKS, v2.limitations, v2.PROVENANCE_NOTE, 8, True, True),
+        "0.3.0": Version(v3.FORMS, v3.TOP_N, v3.AMENDERS, v3.SCHEMA, v3.TASKS, v3.limitations, v3.PROVENANCE_NOTE, 8, True, True,
+                         v3.NOTES_MONTHS),
     }
 
 
+def data_files(v: Version) -> tuple[str, ...]:
+    return ("definitions.json",) + (("dimensions.json",) if v.notes_months else ()) + ("fsds.sqlite", "schema.sql")
+
+
 def write_package_toml(pkg: Path, v: Version, quarter: str, downloaded: str) -> None:
-    data = "\n".join(f'[[data]]\npath = "data/{n}"\nsha256 = "{sha(pkg / "data" / n)}"\n' for n in
-                     ("definitions.json", "fsds.sqlite", "schema.sql"))
+    data = "\n".join(f'[[data]]\npath = "data/{n}"\nsha256 = "{sha(pkg / "data" / n)}"\n' for n in data_files(v))
     lim = v.limitations(quarter)
     prov = f"SEC EDGAR Financial Statement Data Sets {quarter}, {URL.format(q=quarter)}, downloaded {downloaded}{v.provenance_note}"
     budget = "max_usd = 5.0\nbuild_timeout_s = 300\ntask_timeout_s = 120\nmemory_mb = 2048\nmax_attempts = 2\n"
@@ -355,7 +434,7 @@ multiplicity = "holm"
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", required=True, choices=["0.1.0", "0.2.0"])
+    ap.add_argument("--version", required=True, choices=["0.1.0", "0.2.0", "0.3.0"])
     ap.add_argument("--cache-dir", type=Path, default=Path(tempfile.gettempdir()) / "fsds-cache")
     ap.add_argument("--user-agent", default="observatory-benchmark-builder research@example.org")
     ap.add_argument("--out", type=Path, help="package dir (default catalog/packages/sec-fin/<version>)")
@@ -366,13 +445,17 @@ def main() -> None:
     downloaded = dt.datetime.fromtimestamp(zpath.stat().st_mtime, dt.timezone.utc).strftime("%Y-%m-%d")
     (pkg / "data").mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zpath) as z:
-        defs = build_db(z, pkg / "data" / "fsds.sqlite", v)
+        defs, subs, pairs = build_db(z, pkg / "data" / "fsds.sqlite", v)
+    if v.notes_months:
+        notes = [zipfile.ZipFile(download(NOTES_URL.format(m=m), a.cache_dir / f"{m}_notes.zip", a.user_agent))
+                 for m in v.notes_months]
+        write_json(pkg / "data" / "dimensions.json", dimension_labels(notes, subs, pairs))
     (pkg / "data" / "schema.sql").write_text(v.schema, "utf-8")
     write_json(pkg / "data" / "definitions.json", defs)
     con = sqlite3.connect(f"file:{pkg / 'data' / 'fsds.sqlite'}?mode=ro", uri=True)
     write_tasks(con, pkg, v.tasks)
     write_package_toml(pkg, v, quarter, downloaded)
-    for n in ("fsds.sqlite", "schema.sql", "definitions.json"):
+    for n in data_files(v):
         print(f"{sha(pkg / 'data' / n)}  data/{n}")
 
 
