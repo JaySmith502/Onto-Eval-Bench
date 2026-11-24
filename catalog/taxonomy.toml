@@ -1,0 +1,10 @@
+version = "1"
+tags = [
+  "task:lookup",
+  "task:aggregation",
+  "task:concept_mapping",
+  "domain:finance",
+  "difficulty:simple",
+  "difficulty:moderate",
+  "difficulty:challenging",
+]

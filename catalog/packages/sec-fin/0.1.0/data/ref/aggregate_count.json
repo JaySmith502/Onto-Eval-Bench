@@ -1,0 +1,5 @@
+{
+ "answer": 136,
+ "answer_format": "number",
+ "sql": "SELECT COUNT(*) FROM sub WHERE form = '10-Q' AND period = 20260630"
+}

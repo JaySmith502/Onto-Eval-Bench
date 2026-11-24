@@ -1,0 +1,15 @@
+{
+ "answer": [
+  "BOEING CO",
+  "COREBRIDGE FINANCIAL, INC.",
+  "EQUITABLE HOLDINGS, INC.",
+  "F&G ANNUITIES & LIFE, INC.",
+  "FORD MOTOR CO",
+  "INTEL CORP",
+  "MERCK & CO., INC.",
+  "PFIZER INC",
+  "SPACE EXPLORATION TECHNOLOGIES CORP"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'EarningsPerShareDiluted' AND n.ddate = 20260630 AND n.qtrs = 1 AND n.value < 0 ORDER BY s.name"
+}

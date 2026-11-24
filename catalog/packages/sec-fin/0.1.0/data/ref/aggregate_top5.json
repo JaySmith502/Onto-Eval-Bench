@@ -1,0 +1,11 @@
+{
+ "answer": [
+  "JPMORGAN CHASE & CO",
+  "FEDERAL NATIONAL MORTGAGE ASSOCIATION FANNIE MAE",
+  "FEDERAL HOME LOAN MORTGAGE CORP",
+  "BANK OF AMERICA CORP /DE/",
+  "CITIGROUP INC"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Assets' AND n.ddate = 20260630 AND n.qtrs = 0 ORDER BY n.value DESC LIMIT 5"
+}

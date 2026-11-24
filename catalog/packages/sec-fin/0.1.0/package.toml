@@ -1,0 +1,49 @@
+suite = "frozen_core"
+provenance = "SEC EDGAR Financial Statement Data Sets 2026q3, https://www.sec.gov/files/dera/data/financial-statement-data-sets/2026q3.zip, downloaded 2026-11-24"
+usage_rights = "public domain (US government work)"
+taxonomy_version = "1"
+controlled_model = ["claude-haiku-5-5", "2026-11"]
+permitted_tools = []
+external_access = false
+human_assistance = "none"
+limitations = [
+  "Thin vertical slice: 12 tasks, not the planned 100.",
+  "Single quarter of data (2026q3); one filing season, so period coverage is narrow.",
+  "Subset: the 150 filers with the largest reported Assets among 10-K and 10-Q filings; small filers are absent.",
+  "Only unsegmented facts with standard (non-custom) taxonomy tags are included; dimensional detail and company extensions are dropped.",
+  "Tags subset: task:lookup, task:aggregation and task:concept_mapping only.",
+  "analysis.min_groups is 2 for this slice; the full package targets min_groups 8."
+]
+
+[[data]]
+path = "data/definitions.json"
+sha256 = "c8a14456d1680b3d162c4263753c4e83faeec093fd70a89b38e02a4b4c39e214"
+
+[[data]]
+path = "data/fsds.sqlite"
+sha256 = "0427e2e2d6579e919ce500301365ea1ebf5dea2f4157f8f3adfefe6158e73096"
+
+[[data]]
+path = "data/schema.sql"
+sha256 = "1fb6cee4f8c3b80fff9591943f6ed2caf9ed92cac6d2c82bebccedd7267b7653"
+
+[budget.controlled]
+max_usd = 5.0
+build_timeout_s = 300
+task_timeout_s = 120
+memory_mb = 2048
+max_attempts = 2
+
+[budget.native]
+max_usd = 5.0
+build_timeout_s = 300
+task_timeout_s = 120
+memory_mb = 2048
+max_attempts = 2
+
+[analysis]
+min_meaningful_diff = 0.05
+bootstrap_resamples = 2000
+seed = 7
+min_groups = 2
+multiplicity = "holm"
