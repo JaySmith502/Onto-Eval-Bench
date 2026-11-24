@@ -1,0 +1,5 @@
+{
+ "answer": 163479000000.0,
+ "answer_format": "number",
+ "sql": "SELECT (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'VERIZON COMMUNICATIONS INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'LongTermDebtCurrent' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD') + (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'VERIZON COMMUNICATIONS INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'LongTermDebtAndCapitalLeaseObligations' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD') - (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'VERIZON COMMUNICATIONS INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'CashAndCashEquivalentsAtCarryingValue' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD')"
+}

@@ -1,0 +1,7 @@
+{
+ "answer": [
+  "MICROSOFT CORP"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-K' AND n.tag = 'Assets' AND n.qtrs = 0 AND n.ddate = s.period AND n.uom = 'USD' ORDER BY n.value DESC LIMIT 1"
+}

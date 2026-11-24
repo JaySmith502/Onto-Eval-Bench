@@ -1,0 +1,9 @@
+{
+ "answer": [
+  "SPDR GOLD TRUST",
+  "INTEL CORP",
+  "GILEAD SCIENCES, INC."
+ ],
+ "answer_format": "names",
+ "sql": "WITH ni AS (SELECT s.name, s.sic, COALESCE((SELECT value FROM num WHERE adsh = s.adsh AND tag = 'NetIncomeLoss' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD'), (SELECT value FROM num WHERE adsh = s.adsh AND tag = 'ProfitLoss' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD') - COALESCE((SELECT value FROM num WHERE adsh = s.adsh AND tag = 'NetIncomeLossAttributableToNoncontrollingInterest' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD'), 0)) AS v FROM sub s WHERE s.form = '10-Q' AND s.period = 20260630) SELECT name FROM ni WHERE v IS NOT NULL ORDER BY v ASC LIMIT 3"
+}

@@ -1,0 +1,11 @@
+{
+ "answer": [
+  "EOG RESOURCES INC",
+  "DEVON ENERGY CORP/DE",
+  "DIAMONDBACK ENERGY, INC.",
+  "OCCIDENTAL PETROLEUM CORP /DE/",
+  "BKV CORP"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT name FROM sub WHERE sic = 1311 AND form = '10-Q' AND period = 20260630"
+}

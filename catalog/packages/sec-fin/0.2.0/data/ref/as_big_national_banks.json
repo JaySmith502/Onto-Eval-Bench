@@ -1,0 +1,5 @@
+{
+ "answer": 5,
+ "answer_format": "number",
+ "sql": "SELECT COUNT(*) FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period = 20260630 AND n.ddate = 20260630 AND n.uom = 'USD' AND s.sic = 6021 AND n.tag = 'Deposits' AND n.qtrs = 0 AND n.value > 5e11"
+}

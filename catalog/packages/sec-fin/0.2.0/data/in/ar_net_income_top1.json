@@ -1,0 +1,4 @@
+{
+ "answer_format": "names",
+ "question": "According to the filings in this database, among original 10-Q filings (form 10-Q, not 10-Q/A) with a period ending 2026-06-30, which filer reported the largest net income attributable to the company (excluding noncontrolling interests) for the three months ended 2026-06-30? Answer with its company name exactly as stored in sub.name."
+}

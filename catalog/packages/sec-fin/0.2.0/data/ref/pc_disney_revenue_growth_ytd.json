@@ -1,0 +1,8 @@
+{
+ "answer": 0.0616,
+ "answer_format": "number",
+ "sql": "SELECT ROUND((SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'WALT DISNEY CO' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Revenues' AND n.ddate = 20260630 AND n.qtrs = 3 AND n.uom = 'USD') * 1.0 / (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'WALT DISNEY CO' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Revenues' AND n.ddate = 20250630 AND n.qtrs = 3 AND n.uom = 'USD') - 1, 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}

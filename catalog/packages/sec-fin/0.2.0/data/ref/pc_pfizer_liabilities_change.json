@@ -1,0 +1,5 @@
+{
+ "answer": -5746000000.0,
+ "answer_format": "number",
+ "sql": "SELECT (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'PFIZER INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Liabilities' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD') - (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'PFIZER INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Liabilities' AND n.ddate = 20251231 AND n.qtrs = 0 AND n.uom = 'USD')"
+}

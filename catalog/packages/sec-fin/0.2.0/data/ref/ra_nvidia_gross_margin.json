@@ -1,0 +1,8 @@
+{
+ "answer": 0.7498,
+ "answer_format": "number",
+ "sql": "SELECT ROUND((SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'NVIDIA CORP' AND s.form = '10-Q' AND s.period = 20260731 AND n.tag = 'GrossProfit' AND n.ddate = 20260731 AND n.qtrs = 1 AND n.uom = 'USD') * 1.0 / (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'NVIDIA CORP' AND s.form = '10-Q' AND s.period = 20260731 AND n.tag = 'Revenues' AND n.ddate = 20260731 AND n.qtrs = 1 AND n.uom = 'USD'), 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}

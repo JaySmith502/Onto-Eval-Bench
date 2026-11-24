@@ -128,6 +128,41 @@ class AdapterTest(unittest.TestCase):
         r, _ = self.run_task([(200, sql_reply("SELECT value FROM num")), (200, sql_reply("SELECT COUNT(*) FROM num"))])
         self.assertEqual(r["output"]["answer"], 2.0)  # multi-row number result triggered the repair turn
 
+    def test_abstention_sentinel_is_a_null_answer(self):
+        self.build(["schema"])
+        r, stub = self.run_task([(200, sql_reply("SELECT 'NOT_IN_DATABASE'"))])
+        self.assertEqual((r["status"], r["output"]["answer"]), ("completed", None))
+        self.assertEqual(len(stub.requests), 1)
+        r, _ = self.run_task([(200, sql_reply("SELECT 'NOT_IN_DATABASE'"))], fmt="names")
+        self.assertEqual((r["status"], r["output"]["answer"]), ("completed", None))
+
+    def test_null_is_a_failed_query_not_an_abstention(self):
+        self.build(["schema"])
+        r, stub = self.run_task([(200, sql_reply("SELECT SUM(value) FROM num WHERE tag = 'Absent'")),
+                                 (200, sql_reply("SELECT 'NOT_IN_DATABASE'"))])
+        self.assertIsNone(r["output"]["answer"])
+        self.assertIn("NULL", stub.requests[1]["messages"][-1]["content"])
+        r, _ = self.run_task([(200, sql_reply("SELECT NULL"))] * 2)
+        self.assertEqual(r["status"], "invalid_output")
+        r, _ = self.run_task([(200, sql_reply("SELECT NULL"))] * 2, fmt="names")
+        self.assertEqual(r["status"], "invalid_output")
+
+    def test_zero_rows_gets_the_repair_turn(self):
+        self.build(["schema"])
+        r, stub = self.run_task([(200, sql_reply("SELECT value FROM num WHERE tag = 'Absent'")),
+                                 (200, sql_reply("SELECT 'NOT_IN_DATABASE'"))])
+        self.assertIsNone(r["output"]["answer"])
+        self.assertIn("no rows", stub.requests[1]["messages"][-1]["content"])
+        r, _ = self.run_task([(200, sql_reply("SELECT name FROM sub WHERE 0"))] * 2, fmt="names")
+        self.assertEqual(r["status"], "invalid_output")
+
+    def test_prompt_states_abstention_and_rounding_conventions(self):
+        self.build(["schema"])
+        _, stub = self.run_task([(200, sql_reply("SELECT 1"))])
+        prompt = stub.requests[0]["messages"][0]["content"]
+        self.assertIn("SELECT 'NOT_IN_DATABASE'", prompt)
+        self.assertIn("ROUND(x, 4)", prompt)
+
     def test_read_only(self):
         self.build(["schema"])
         r, _ = self.run_task([(200, sql_reply("DELETE FROM num")), (200, sql_reply("DELETE FROM num"))])
@@ -138,7 +173,7 @@ class AdapterTest(unittest.TestCase):
         self.build(["schema"])
         r, stub = self.run_task([(200, sql_reply("SELECT 1"))])
         self.assertEqual(r["model_used"], MODEL)
-        self.assertEqual(r["adapter_version"], "llm-sql-1")
+        self.assertEqual(r["adapter_version"], "llm-sql-2")
         c = r["cost"]
         self.assertEqual((c["tokens_in"], c["tokens_out"], c["measured"]), (1000, 200, True))
         self.assertAlmostEqual(c["usd"], 1000 * 0.10 / 1e6 + 200 * 0.50 / 1e6)

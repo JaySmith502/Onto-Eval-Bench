@@ -1,0 +1,8 @@
+{
+ "answer": 1.3558,
+ "answer_format": "number",
+ "sql": "SELECT ROUND(AVG(a.value * 1.0 / l.value), 4) FROM sub s JOIN num a ON a.adsh = s.adsh AND a.tag = 'AssetsCurrent' AND a.ddate = 20260630 AND a.qtrs = 0 JOIN num l ON l.adsh = s.adsh AND l.tag = 'LiabilitiesCurrent' AND l.ddate = 20260630 AND l.qtrs = 0 WHERE s.sic = 2911 AND s.form = '10-Q' AND s.period = 20260630",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}
