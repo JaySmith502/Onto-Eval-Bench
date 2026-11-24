@@ -85,6 +85,21 @@ def _candidate(stem: str, d: dict) -> Candidate:
     return Candidate(stem, d["name"], d["kind"], claims, d["claim_source"], tuple(d.get("disclosures", ())))
 
 
+def _image(ref: object) -> str:
+    if not isinstance(ref, str) or (ref and not re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", ref)):
+        raise ValueError(f"container_image must be pinned by digest (name[:tag]@sha256:<64 hex>): {ref!r}")
+    return ref
+
+
+def _names(key: str, d: dict) -> tuple[str, ...]:
+    v = d.get(key, [])
+    if not isinstance(v, list) or not all(isinstance(x, str) and x for x in v):
+        raise ValueError(f"{key} must be a list of non-empty strings: {v!r}")
+    if key == "secret_env" and not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", x) for x in v):
+        raise ValueError(f"secret_env entries must be environment variable names: {v!r}")
+    return tuple(sorted(set(v)))
+
+
 def _config(stem: str, d: dict) -> ConfigurationIdentity:
     check_id("config_id", stem)
     if d.get("config_id", stem) != stem:
@@ -92,7 +107,10 @@ def _config(stem: str, d: dict) -> ConfigurationIdentity:
     return ConfigurationIdentity(
         stem, d["method_id"], d["method_version"], d["model_id"], d["model_version"], LadderLevel(d["ladder_level"]),
         tuple(sorted((k, str(v)) for k, v in d.get("settings", {}).items())), frozenset(d.get("information_access", ())),
-        d.get("endpoint"), AdapterRef(tuple(d["adapter_command"]), d["adapter_version"]), d.get("versions_immutable", True))
+        d.get("endpoint"),
+        AdapterRef(tuple(d["adapter_command"]), d["adapter_version"], image=_image(d.get("container_image", "")),
+                   network_hosts=_names("network_hosts", d), secret_env=_names("secret_env", d)),
+        d.get("versions_immutable", True))
 
 
 def _task(t: dict, pdir: Path, problems: list[str]) -> Task:
@@ -166,6 +184,8 @@ def load(root: Path) -> Catalog:
     - controlled_model and an AnalysisPlan present; analysis.min_groups >= 2
     - every config's method_id exists in candidates; every adapter_command argument naming a
       path (contains "/") is an existing file, relative to the catalog's parent dir
+    - container_image, when present, is pinned by digest ("@sha256:<64 hex>"); network_hosts and
+      secret_env are lists of strings (secret_env entries valid env var names)
     - budgets defined for every Mode
     - every task tag and candidate claim key is in the taxonomy
     """
