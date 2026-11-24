@@ -24,10 +24,10 @@ CREATE TABLE num (
   adsh TEXT,              -- accession number, joins sub.adsh
   tag TEXT,               -- taxonomy element name, joins tag.tag
   version TEXT,           -- taxonomy version, for example us-gaap/2025
-  ddate INTEGER,          -- end date of the fact's period, YYYYMMDD (the instant for balance sheet items)
+  ddate INTEGER,          -- end date of the fact's period, YYYYMMDD, rounded to the month end (the instant for balance sheet items)
   qtrs INTEGER,           -- duration in quarters rounded: 0 for an instant (point in time), 1, 2, 3, 4 for durations
   uom TEXT,               -- unit of measure: USD (also for per-share amounts such as earnings per share), shares,
-                          -- pure (ratios), EUR
+                          -- pure (ratios), EUR; dnum also holds other currencies and units (AUD, CAD, GBP, JPY, oz, ...)
   value REAL,             -- reported value in uom (full units, not thousands or millions)
   PRIMARY KEY (adsh, tag, version, ddate, qtrs, uom)
 );
@@ -53,8 +53,11 @@ CREATE TABLE dnum (
 -- "Statement" and a trailing "Axis", "Member" or "Domain" removed, as FSDS writes them: the standard axis
 -- StatementBusinessSegmentsAxis is BusinessSegments, StatementGeographicalAxis is Geographical, the standard member
 -- OperatingSegmentsMember is OperatingSegments. Members a filer defines itself (its own segments, products or
--- regions) carry the filer's element name, for example AmericasSegment. A co-registrant (a subsidiary that files
--- jointly) appears as axis LegalEntity.
+-- regions) carry the filer's element name, for example AmericasSegment. Axis LegalEntity separates the legal entities of
+-- a combined filing: co-registrant subsidiaries, and sometimes the parent, variable interest entities or aggregates.
+-- A segment's fact may carry a second pair ConsolidationItems=OperatingSegments: some filers report segment figures
+-- only that way, some report both forms (with equal or different values), so ndims differs between filers and
+-- ndims = 1 cannot be assumed for a segment.
 CREATE TABLE dim (
   fact_id INTEGER,        -- joins dnum.fact_id
   axis TEXT,              -- the dimension, for example BusinessSegments, Geographical, ProductOrService,

@@ -1,4 +1,4 @@
 {
  "answer_format": "number",
- "question": "According to the filings in this database, what was the combined net income, in US dollars, of the co-registrant subsidiaries reported in SOUTHERN CO's 10-Q for the period ended 2026-06-30, for the three months ended 2026-06-30?"
+ "question": "According to the filings in this database, what was the combined net income attributable to each co-registrant subsidiary (after noncontrolling interests), in US dollars, of the co-registrant subsidiaries reported in SOUTHERN CO's 10-Q for the period ended 2026-06-30, for the three months ended 2026-06-30?"
 }

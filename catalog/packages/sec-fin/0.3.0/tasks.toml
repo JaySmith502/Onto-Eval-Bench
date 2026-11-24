@@ -166,7 +166,7 @@ consequence = "low"
 input_ref = "data/in/as_4911_coregistrants.json"
 reference_ref = "data/ref/as_4911_coregistrants.json"
 check = "checks/answer.py:check"
-note = "Co-registrants are the members of axis LegalEntity; counts filings with any such fact."
+note = "Counts filings with any LegalEntity fact; the axis also holds parents, VIEs and aggregates, but each of the 12 filings has a genuine subsidiary member."
 
 [[task]]
 task_id = "un_pg_rd"
@@ -684,7 +684,7 @@ consequence = "low"
 input_ref = "data/in/di_lilly_jardiance.json"
 reference_ref = "data/ref/di_lilly_jardiance.json"
 check = "checks/answer.py:check"
-note = "The product's total is the fact with only the product pair (1.232B); the 250M fact with a second pair (TypeOfArrangement=MilestonePaymentsSalesBased) is one arrangement type, and US/non-US facts carry a Geographical pair."
+note = "The product's total is the fact with only the product pair (1.232B); the 250M fact with a second pair (TypeOfArrangement=MilestonePaymentsSalesBased) is one arrangement type, and US/non-US facts carry a Geographical pair. US 616M + non-US 615M = 1.231B (filing rounding), so a rel 1e-3 tolerance accepts that build."
 
 [[task]]
 task_id = "di_msft_product_revenue"
@@ -886,10 +886,10 @@ note = "Cash alone (short-term investments excluded) is below total debt, so the
 task_id = "sl_apple_greater_china"
 group = "segment_lookup"
 tracks = ["semantic_task"]
-tags = ["domain:finance", "task:segment_lookup", "difficulty:simple"]
+tags = ["domain:finance", "task:segment_lookup", "difficulty:moderate"]
 split = "config"
 disclosure = "public"
-difficulty = "simple"
+difficulty = "moderate"
 consequence = "low"
 input_ref = "data/in/sl_apple_greater_china.json"
 reference_ref = "data/ref/sl_apple_greater_china.json"
@@ -1062,7 +1062,7 @@ consequence = "low"
 input_ref = "data/in/sa_amazon_segment_opinc.json"
 reference_ref = "data/ref/sa_amazon_segment_opinc.json"
 check = "checks/answer.py:check"
-note = "Three segment facts; their sum equals consolidated operating income (27.461B)."
+note = "Two of the three segment facts (the third is AWS); all three sum to consolidated operating income, so asking for all would not need dnum."
 
 [[task]]
 task_id = "sa_apple_segment_count"
@@ -1090,7 +1090,7 @@ consequence = "low"
 input_ref = "data/in/sa_msft_segment_opinc.json"
 reference_ref = "data/ref/sa_msft_segment_opinc.json"
 check = "checks/answer.py:check"
-note = "Three one-pair segment facts for the fiscal year."
+note = "Two of the three one-pair segment facts for the fiscal year; all three sum to consolidated operating income, so asking for all would not need dnum."
 
 [[task]]
 task_id = "sa_meta_outside_us_canada"
@@ -1230,7 +1230,7 @@ consequence = "low"
 input_ref = "data/in/sa_southern_coregistrants_ni.json"
 reference_ref = "data/ref/sa_southern_coregistrants_ni.json"
 check = "checks/answer.py:check"
-note = "Five LegalEntity members with a quarterly NetIncomeLoss fact."
+note = "Five LegalEntity members with a quarterly NetIncomeLoss fact (attributable to the entity; Southern Power also reports ProfitLoss, before its noncontrolling share)."
 
 [[task]]
 task_id = "sc_amazon_aws_margin"
@@ -1376,10 +1376,10 @@ note = "Total segment sales (8.269B) carry ConsolidationItems=OperatingSegments;
 task_id = "sc_apple_americas_opinc_change"
 group = "segment_composition"
 tracks = ["semantic_task"]
-tags = ["domain:finance", "task:segment_composition", "difficulty:simple"]
+tags = ["domain:finance", "task:segment_composition", "difficulty:moderate"]
 split = "heldout"
 disclosure = "public"
-difficulty = "simple"
+difficulty = "moderate"
 consequence = "low"
 input_ref = "data/in/sc_apple_americas_opinc_change.json"
 reference_ref = "data/ref/sc_apple_americas_opinc_change.json"

@@ -35,10 +35,10 @@ CREATE TABLE num (
   adsh TEXT,              -- accession number, joins sub.adsh
   tag TEXT,               -- taxonomy element name, joins tag.tag
   version TEXT,           -- taxonomy version, for example us-gaap/2025
-  ddate INTEGER,          -- end date of the fact's period, YYYYMMDD (the instant for balance sheet items)
+  ddate INTEGER,          -- end date of the fact's period, YYYYMMDD, rounded to the month end (the instant for balance sheet items)
   qtrs INTEGER,           -- duration in quarters rounded: 0 for an instant (point in time), 1, 2, 3, 4 for durations
   uom TEXT,               -- unit of measure: USD (also for per-share amounts such as earnings per share), shares,
-                          -- pure (ratios), EUR
+                          -- pure (ratios), EUR; dnum also holds other currencies and units (AUD, CAD, GBP, JPY, oz, ...)
   value REAL,             -- reported value in uom (full units, not thousands or millions)
   PRIMARY KEY (adsh, tag, version, ddate, qtrs, uom)
 );
@@ -64,8 +64,11 @@ CREATE TABLE dnum (
 -- "Statement" and a trailing "Axis", "Member" or "Domain" removed, as FSDS writes them: the standard axis
 -- StatementBusinessSegmentsAxis is BusinessSegments, StatementGeographicalAxis is Geographical, the standard member
 -- OperatingSegmentsMember is OperatingSegments. Members a filer defines itself (its own segments, products or
--- regions) carry the filer's element name, for example AmericasSegment. A co-registrant (a subsidiary that files
--- jointly) appears as axis LegalEntity.
+-- regions) carry the filer's element name, for example AmericasSegment. Axis LegalEntity separates the legal entities of
+-- a combined filing: co-registrant subsidiaries, and sometimes the parent, variable interest entities or aggregates.
+-- A segment's fact may carry a second pair ConsolidationItems=OperatingSegments: some filers report segment figures
+-- only that way, some report both forms (with equal or different values), so ndims differs between filers and
+-- ndims = 1 cannot be assumed for a segment.
 CREATE TABLE dim (
   fact_id INTEGER,        -- joins dnum.fact_id
   axis TEXT,              -- the dimension, for example BusinessSegments, Geographical, ProductOrService,
@@ -180,10 +183,10 @@ TASKS: list[dict] = [
          "Meta, Alphabet and SpaceX each report one consolidated three-month R&D fact."),
     task("as_4911_coregistrants", "aggregate_sector", "challenging", "heldout",
          f"How many of the {Q10} by filers with SIC code 4911 (electric services) report figures for at least one "
-         "co-registrant subsidiary?",
+         "separate legal entity (axis LegalEntity), such as a co-registrant subsidiary?",
          "SELECT COUNT(*) FROM sub s WHERE s.form = '10-Q' AND s.period = 20260630 AND s.sic = 4911 AND EXISTS (SELECT 1 FROM "
          "dnum n JOIN dim d ON d.fact_id = n.fact_id WHERE n.adsh = s.adsh AND d.axis = 'LegalEntity')",
-         "Co-registrants are the members of axis LegalEntity; counts filings with any such fact."),
+         "Counts filings with any LegalEntity fact; the axis also holds parents, VIEs and aggregates, but each of the 12 filings has a genuine subsidiary member."),
 
     # 3. unanswerable: the database does not contain the fact, including breakdowns a filer does not report.
     absent("un_pg_rd", "simple", "config",
@@ -383,14 +386,14 @@ TASKS: list[dict] = [
          fact(WMT, REV, 20260731, 1, period=20260731),
          "Net sales is RevenueFromContractWithCustomerExcludingAssessedTax; total revenues (Revenues) add membership income."),
     task("di_cat_pe_external", "disambiguation", "moderate", "heldout",
-         f"What were the sales and revenues of {CAT}'s Power & Energy segment to external customers (excluding sales to other "
+         f"What were the sales and revenues, in US dollars, of {CAT}'s Power & Energy segment to external customers (excluding sales to other "
          f"Caterpillar segments) for the three months ended 2026-06-30, {src()}?",
          dfact(CAT, "Revenues", "BusinessSegments=PowerEnergy;ConsolidationItems=OperatingSegmentsExcludingIntersegmentElimination",
                P, 1),
          "External sales 6.795B, reported both with the segment alone and with the excluding-intersegment member (same value); "
          "total segment sales including intersegment are 8.238B."),
     task("di_rtx_collins_total", "disambiguation", "moderate", "heldout",
-         f"What were the total sales of {RTX}'s Collins Aerospace segment for the three months ended 2026-06-30, including "
+         f"What were the total sales, in US dollars, of {RTX}'s Collins Aerospace segment for the three months ended 2026-06-30, including "
          f"its sales to other RTX segments, {src()}?",
          dfact(RTX, REV, "BusinessSegments=CollinsAerospace;" + SEG, P, 1),
          "Segment total 8.210B (with ConsolidationItems=OperatingSegments); external sales alone are 7.552B."),
@@ -408,7 +411,8 @@ TASKS: list[dict] = [
          f"{src()}?",
          dfact(LLY, "Revenues", "ProductOrService=Jardiance", P, 1),
          "The product's total is the fact with only the product pair (1.232B); the 250M fact with a second pair "
-         "(TypeOfArrangement=MilestonePaymentsSalesBased) is one arrangement type, and US/non-US facts carry a Geographical pair."),
+         "(TypeOfArrangement=MilestonePaymentsSalesBased) is one arrangement type, and US/non-US facts carry a Geographical pair. "
+         "US 616M + non-US 615M = 1.231B (filing rounding), so a rel 1e-3 tolerance accepts that build.", tolerance={"rel": 0.001}),
     task("di_msft_product_revenue", "disambiguation", "challenging", "heldout",
          f"What was the revenue {MSFT} classifies as product revenue (as opposed to service and other revenue) for its fiscal "
          f"year ended 2026-06-30, in US dollars, {src('10-K')}?",
@@ -496,7 +500,7 @@ TASKS: list[dict] = [
          "Cash alone (short-term investments excluded) is below total debt, so the result is negative."),
 
     # 9. segment_lookup: one dimensional fact named in business language.
-    task("sl_apple_greater_china", "segment_lookup", "simple", "config",
+    task("sl_apple_greater_china", "segment_lookup", "moderate", "config",
          f"What were the net sales, in US dollars, of {APPLE}'s Greater China segment for the three months ended 2026-06-30, "
          f"{src()}?",
          dfact(APPLE, REV, "BusinessSegments=GreaterChinaSegment;" + SEG, P, 1),
@@ -559,20 +563,22 @@ TASKS: list[dict] = [
 
     # 10. segment_aggregate: sums, counts and maxima over members, members against the consolidated total, eliminations.
     task("sa_amazon_segment_opinc", "segment_aggregate", "simple", "config",
-         f"What was the combined operating income, in US dollars, of all of {AMZN}'s business segments for the three months "
-         f"ended 2026-06-30, {src()}?",
-         f"SELECT SUM(n.value) {members(AMZN, 'OperatingIncomeLoss', 'BusinessSegments', P, 1)} AND n.ndims = 1",
-         "Three segment facts; their sum equals consolidated operating income (27.461B)."),
+         f"What was the combined operating income, in US dollars, of {AMZN}'s North America and International segments for the "
+         f"three months ended 2026-06-30, {src()}?",
+         f"SELECT SUM(n.value) {members(AMZN, 'OperatingIncomeLoss', 'BusinessSegments', P, 1)} AND n.ndims = 1 AND d.member IN "
+         "('NorthAmericaSegment', 'InternationalSegment')",
+         "Two of the three segment facts (the third is AWS); all three sum to consolidated operating income, so asking for all would not need dnum."),
     task("sa_apple_segment_count", "segment_aggregate", "simple", "heldout",
          f"How many geographic business segments does {APPLE} report net sales for in its 10-Q for the period ended "
          "2026-06-30, for the three months ended 2026-06-30?",
          f"SELECT COUNT(DISTINCT d.member) {members(APPLE, REV, 'BusinessSegments', P, 1)}",
          "Americas, Europe, Greater China, Japan and Rest of Asia Pacific."),
     task("sa_msft_segment_opinc", "segment_aggregate", "simple", "heldout",
-         f"What was the combined operating income, in US dollars, of {MSFT}'s three business segments for its fiscal year "
-         f"ended 2026-06-30, {src('10-K')}?",
-         f"SELECT SUM(n.value) {members(MSFT, 'OperatingIncomeLoss', 'BusinessSegments', P, 4, **K)} AND n.ndims = 1",
-         "Three one-pair segment facts for the fiscal year."),
+         f"What was the combined operating income, in US dollars, of {MSFT}'s Intelligent Cloud and More Personal Computing "
+         f"segments for its fiscal year ended 2026-06-30, {src('10-K')}?",
+         f"SELECT SUM(n.value) {members(MSFT, 'OperatingIncomeLoss', 'BusinessSegments', P, 4, **K)} AND n.ndims = 1 AND d.member IN "
+         "('IntelligentCloud', 'MorePersonalComputing')",
+         "Two of the three one-pair segment facts for the fiscal year; all three sum to consolidated operating income, so asking for all would not need dnum."),
     task("sa_meta_outside_us_canada", "segment_aggregate", "moderate", "heldout",
          f"What was the revenue, in US dollars, of {META} from outside the United States and Canada for the three months "
          f"ended 2026-06-30, {src()}?",
@@ -596,13 +602,13 @@ TASKS: list[dict] = [
          "('EntertainmentSegment', 'SportsSegment', 'ExperiencesSegment')",
          "Three one-pair segment facts (25.813B); consolidated revenue (25.248B) is after the -565M eliminations."),
     task("sa_disney_eliminations", "segment_aggregate", "moderate", "heldout",
-         f"What was the amount of {DIS}'s intersegment revenue eliminations for the three months ended 2026-06-30, {src()}? "
+         f"What was the amount, in US dollars, of {DIS}'s intersegment revenue eliminations for the three months ended 2026-06-30, {src()}? "
          "Give a reduction of revenue as a negative number.",
          dfact(DIS, "Revenues", "BusinessSegments=SegmentEliminations", P, 1),
          "The SegmentEliminations member alone; its geographic and product splits carry a second pair."),
     task("sa_cat_intersegment", "segment_aggregate", "challenging", "heldout",
-         f"What was the total of sales between {CAT}'s segments (intersegment sales eliminated in consolidation) for the three "
-         f"months ended 2026-06-30, {src()}? Give it as a positive number.",
+         f"What was the total, in US dollars, of sales between all of {CAT}'s operating segments, including All Other (intersegment "
+         f"sales eliminated in consolidation), for the three months ended 2026-06-30, {src()}? Give it as a positive number.",
          f"SELECT ABS({dv(CAT, 'Revenues', 'ConsolidationItems=IntersegmentElimination', P, 1)})",
          "Caterpillar reports the total as +1.677B; the per-segment elimination facts (-69M, -85M, 0, -1.443B, -80M) sum to "
          "-1.677B, so either route gives the same magnitude."),
@@ -626,10 +632,11 @@ TASKS: list[dict] = [
          "Cardiometabolic health (18.353B) is the parent of Mounjaro, Zepbound, Jardiance, Trulicity and other; the remainder "
          "equals Jardiance + Trulicity + other cardiometabolic (3.482B)."),
     task("sa_southern_coregistrants_ni", "segment_aggregate", "challenging", "heldout",
-         "What was the combined net income, in US dollars, of the co-registrant subsidiaries reported in SOUTHERN CO's 10-Q "
+         "What was the combined net income attributable to each co-registrant subsidiary (after noncontrolling interests), in US "
+         "dollars, of the co-registrant subsidiaries reported in SOUTHERN CO's 10-Q "
          "for the period ended 2026-06-30, for the three months ended 2026-06-30?",
          f"SELECT SUM(n.value) {members('SOUTHERN CO', 'NetIncomeLoss', 'LegalEntity', P, 1)} AND n.ndims = 1",
-         "Five LegalEntity members with a quarterly NetIncomeLoss fact."),
+         "Five LegalEntity members with a quarterly NetIncomeLoss fact (attributable to the entity; Southern Power also reports ProfitLoss, before its noncontrolling share)."),
 
     # 11. segment_composition: segment facts combined with other concepts, totals or periods.
     task("sc_amazon_aws_margin", "segment_composition", "moderate", "config",
@@ -696,7 +703,7 @@ TASKS: list[dict] = [
          ratio(dv(RTX, "OperatingIncomeLoss", "BusinessSegments=Raytheon;" + SEG, P, 1),
                dv(RTX, REV, "BusinessSegments=Raytheon;" + SEG, P, 1)),
          "Total segment sales (8.269B) carry ConsolidationItems=OperatingSegments; external sales are 8.220B.", tolerance=RATIO),
-    task("sc_apple_americas_opinc_change", "segment_composition", "simple", "heldout",
+    task("sc_apple_americas_opinc_change", "segment_composition", "moderate", "heldout",
          f"By how much, in US dollars, did the operating income of {APPLE}'s Americas segment for the three months ended "
          f"2026-06-30 exceed that for the three months ended 2025-06-30, {src()}?",
          f"SELECT {dv(APPLE, 'OperatingIncomeLoss', 'BusinessSegments=AmericasSegment;' + SEG, P, 1)} - "
@@ -734,6 +741,12 @@ def limitations(quarter: str) -> list[str]:
         "summing every member of an axis double counts.",
         "Tasks are not fully independent: MICROSOFT CORP appears in 13 tasks and CISCO SYSTEMS, INC. in 9, and several "
         "segment tasks reuse one filing (Apple, Eli Lilly, Caterpillar).",
+        "Four groups (lookup, period_compare, ratio, concept_composition; 32 tasks) draw from six 10-K filers only "
+        "(Microsoft, Cisco, Cardinal Health, P&G, FedEx, ADP), all on fiscal-year facts, so each is close to six filings "
+        "asked several ways; 87 tasks name a filer and only 20 distinct filers are named.",
+        "Some segment facts exist only with a second ConsolidationItems=OperatingSegments pair and some without (Apple "
+        "against Amazon, Meta, Microsoft); schema.sql says so, but a solver that assumes ndims = 1 for every filer fails "
+        "the others.",
         "Ratio and growth answers are rounded to 4 decimal places and accepted within an absolute 0.0001; other numbers "
         "within a relative 1e-6.",
         "Unanswerable tasks have a null reference, reached only by an explicit abstention (the llm-sql adapter returns null "
