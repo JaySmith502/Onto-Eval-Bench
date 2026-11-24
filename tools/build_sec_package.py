@@ -3,7 +3,7 @@
 
 Stdlib only. Rerunnable and byte-reproducible for a given zip: every insert is sorted, the page
 size is fixed and the database is VACUUMed. References come from running each task's gold SQL.
-0.1.0 is defined here; each later version's tasks and schema live in their own module (sec_fin_0_2_0).
+0.1.0 is defined here; each later version's tasks and schema live in their own module (sec_fin_0_2_0, sec_fin_0_3_0).
 
     python3 tools/build_sec_package.py --version 0.2.0 [--cache-dir DIR] [--user-agent UA]
 """
