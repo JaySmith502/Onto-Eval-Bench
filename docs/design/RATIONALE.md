@@ -131,6 +131,14 @@ Four runners: opus (A), fable (B), sonnet (C), haiku (D). All four converged on 
   - **`RunRecord.final_attempts`** is the one final-attempt rule, used by the runner, scoring and the report. **`Store.run_lock`** makes a second concurrent `execute` of a run fail. `obs compare --configs/--tags` labels its output exploratory.
   - Setup now runs on every `execute`, resumes included, so adapters must make it idempotent (stated in the adapter protocol).
 
+## The sec-fin package
+
+`tools/build_sec_package.py --version V` builds `catalog/packages/sec-fin/V` from one SEC Financial Statement Data Sets quarter, byte-reproducibly; each version after 0.1.0 keeps its subset rules, schema and tasks in its own module (`tools/sec_fin_0_2_0.py`). 0.2.0 has 100 text-to-SQL tasks in ten scenario groups of ten, one config-split task per group, about 25/45/30 simple/moderate/challenging. Every reference is the result of a gold query stored beside it, and every task note says why the answer is unique. Tasks are never selected, dropped or tuned by how a model scores.
+
+- **Abstention is explicit.** Ten tasks ask for a fact the database does not hold, and their reference is null. The llm-sql adapter returns null only when the query result is the single string `'NOT_IN_DATABASE'`; NULL or zero rows is a failed query (one repair turn, then INVALID_OUTPUT). The earlier convention, a single NULL row, credited any lookup that matched nothing (a wrong tag guess, say) as a correct abstention. Every question is scoped "according to the filings in this database", so the unanswerable ones carry no telltale wording, and they ask about filers in the database, not filers the subset cut.
+- **Co-registrant copies are dropped.** A filing whose kept facts are identical to an earlier-accepted filing by another filer is left out before the size ranking. In 2026q3 this removes one filing, AEP TEXAS INC.'s copy of American Electric Power's 10-Q, which counted one company twice in ranks and sector counts.
+- **Definitions are the publisher's.** FSDS fills the labels of a taxonomy's newest release in the quarter from filers, so `definitions.json` takes label and documentation from the newest older release (us-gaap/2025). Tags that only us-gaap/2026 has keep its documentation and get an empty label.
+
 ## Open questions and risks
 
 - How many scenario groups will the first package have? Below `min_groups` every pairwise call reads INCONCLUSIVE. Is that the honest pilot output you want, or should groups be finer?
