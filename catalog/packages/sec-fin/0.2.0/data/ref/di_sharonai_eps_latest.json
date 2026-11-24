@@ -1,0 +1,5 @@
+{
+ "answer": -0.27,
+ "answer_format": "number",
+ "sql": "SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'SHARONAI HOLDINGS INC.' AND s.form = '10-Q/A' AND s.period = 20260630 AND n.tag = 'EarningsPerShareDiluted' AND n.ddate = 20250630 AND n.qtrs = 1 AND n.uom = 'USD'"
+}

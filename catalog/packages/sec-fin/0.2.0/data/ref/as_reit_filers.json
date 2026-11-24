@@ -1,0 +1,5 @@
+{
+ "answer": 12,
+ "answer_format": "number",
+ "sql": "SELECT COUNT(DISTINCT cik) FROM sub WHERE sic = 6798"
+}

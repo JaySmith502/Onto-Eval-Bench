@@ -1,0 +1,9 @@
+{
+ "answer": [
+  "JPMORGAN CHASE & CO",
+  "ALPHABET INC.",
+  "GOLDMAN SACHS GROUP INC"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num a ON a.adsh = s.adsh AND a.tag = 'Assets' AND a.ddate = 20260630 AND a.qtrs = 0 JOIN num b ON b.adsh = s.adsh AND b.tag = 'Assets' AND b.ddate = 20251231 AND b.qtrs = 0 WHERE s.form = '10-Q' AND s.period = 20260630 ORDER BY a.value - b.value DESC LIMIT 3"
+}

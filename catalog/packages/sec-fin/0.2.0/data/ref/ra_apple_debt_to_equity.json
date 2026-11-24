@@ -1,0 +1,8 @@
+{
+ "answer": 2.5646,
+ "answer_format": "number",
+ "sql": "SELECT ROUND((SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'APPLE INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Liabilities' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD') * 1.0 / (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'APPLE INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'StockholdersEquity' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD'), 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}

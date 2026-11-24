@@ -1,0 +1,5 @@
+{
+ "answer": 118,
+ "answer_format": "number",
+ "sql": "SELECT 1 + COUNT(*) FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period = 20260630 AND n.ddate = 20260630 AND n.uom = 'USD' AND n.tag = 'Assets' AND n.qtrs = 0 AND n.value > (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'COCA COLA CO' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Assets' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD')"
+}

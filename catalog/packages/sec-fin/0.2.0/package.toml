@@ -1,0 +1,51 @@
+suite = "frozen_core"
+provenance = "SEC EDGAR Financial Statement Data Sets 2026q3, https://www.sec.gov/files/dera/data/financial-statement-data-sets/2026q3.zip, downloaded 2026-11-24; subset: the 300 filers with the largest reported Assets plus the 10 largest other filers that filed a 10-K/A or 10-Q/A in the quarter"
+usage_rights = "public domain (US government work)"
+taxonomy_version = "1"
+controlled_model = ["claude-haiku-5-5", "2026-11"]
+permitted_tools = []
+external_access = false
+human_assistance = "none"
+limitations = [
+  "100 tasks in 10 scenario groups of about 10 tasks; group-level uncertainty rests on 10 clusters.",
+  "Single quarter of data (2026q3); one filing season, so period coverage is narrow.",
+  "Subset: the 300 filers with the largest reported Assets among 10-K, 10-Q and their amendments, plus the 10 largest other filers that filed a 10-K/A or 10-Q/A; small filers are absent.",
+  "Only unsegmented facts with standard (non-custom) taxonomy tags are included; dimensional detail and company extensions are dropped.",
+  "Amendments in the quarter mostly repeat the original values; one filer restates figures, so the amendment rule is tested mostly through duplicate facts, not conflicting ones.",
+  "sub.prevrpt is 0 for every filing in this quarter (the source flags no filing as superseded), so the most recent filing must be found from sub.filed.",
+  "Ratio and growth answers are rounded to 4 decimal places and accepted within an absolute 0.0001 (book value per share within 0.01); other numbers within a relative 1e-6.",
+  "Unanswerable tasks have a null reference; a method that answers null everywhere scores only on that group."
+]
+
+[[data]]
+path = "data/definitions.json"
+sha256 = "f8d87bf8d5d1d9dfacffdda224453c1eb166b2c676e7f0db695d6b173c3d113a"
+
+[[data]]
+path = "data/fsds.sqlite"
+sha256 = "7169391e96010e506ab385134155d9f574d9bcfe3bef4940d3ef8998f3b53114"
+
+[[data]]
+path = "data/schema.sql"
+sha256 = "0a8046c24bafce757b1a1bb050b066f136da5dc73a4fda001ba345543f89967c"
+
+[budget.controlled]
+max_usd = 5.0
+build_timeout_s = 300
+task_timeout_s = 120
+memory_mb = 2048
+max_attempts = 2
+
+[budget.native]
+max_usd = 5.0
+build_timeout_s = 300
+task_timeout_s = 120
+memory_mb = 2048
+max_attempts = 2
+
+[analysis]
+min_meaningful_diff = 0.05
+bootstrap_resamples = 2000
+seed = 7
+min_groups = 8
+multiplicity = "holm"

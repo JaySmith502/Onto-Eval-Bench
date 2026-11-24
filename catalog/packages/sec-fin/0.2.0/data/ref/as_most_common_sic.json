@@ -1,0 +1,5 @@
+{
+ "answer": 6021,
+ "answer_format": "number",
+ "sql": "SELECT sic FROM sub WHERE form = '10-Q' AND period = 20260630 GROUP BY sic ORDER BY COUNT(*) DESC LIMIT 1"
+}

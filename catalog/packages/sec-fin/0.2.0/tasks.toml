@@ -1,0 +1,1401 @@
+version = "1"
+
+[[task]]
+task_id = "li_amd_inventory"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/li_amd_inventory.json"
+reference_ref = "data/ref/li_amd_inventory.json"
+check = "checks/answer.py:check"
+note = "AMD reports one inventory line, InventoryNet, at 2026-06-30."
+
+[[task]]
+task_id = "li_pfizer_goodwill"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/li_pfizer_goodwill.json"
+reference_ref = "data/ref/li_pfizer_goodwill.json"
+check = "checks/answer.py:check"
+note = "Single Goodwill fact at the 2026-06-30 instant in Pfizer's only filing."
+
+[[task]]
+task_id = "li_apple_liabilities"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/li_apple_liabilities.json"
+reference_ref = "data/ref/li_apple_liabilities.json"
+check = "checks/answer.py:check"
+note = "Apple reports Liabilities directly; current and noncurrent are separate tags."
+
+[[task]]
+task_id = "li_jpm_deposits"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/li_jpm_deposits.json"
+reference_ref = "data/ref/li_jpm_deposits.json"
+check = "checks/answer.py:check"
+note = "One Deposits fact at 2026-06-30; the other date in the filing is 2025-12-31."
+
+[[task]]
+task_id = "li_apple_current_assets"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/li_apple_current_assets.json"
+reference_ref = "data/ref/li_apple_current_assets.json"
+check = "checks/answer.py:check"
+note = "AssetsCurrent at the 2026-06-30 instant; the comparative is 2025-09-30."
+
+[[task]]
+task_id = "li_apple_cl_fye"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/li_apple_cl_fye.json"
+reference_ref = "data/ref/li_apple_cl_fye.json"
+check = "checks/answer.py:check"
+note = "Apple's fiscal year ends in September; its 10-Q carries the 2025-09-30 comparative."
+
+[[task]]
+task_id = "li_nvidia_inventory_fye"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/li_nvidia_inventory_fye.json"
+reference_ref = "data/ref/li_nvidia_inventory_fye.json"
+check = "checks/answer.py:check"
+note = "NVIDIA's 10-Q has two inventory instants; the question names 2026-01-31."
+
+[[task]]
+task_id = "li_coke_aoci"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/li_coke_aoci.json"
+reference_ref = "data/ref/li_coke_aoci.json"
+check = "checks/answer.py:check"
+note = "One AOCI fact at 2026-06-30; it is a loss, stored negative."
+
+[[task]]
+task_id = "li_apple_shares_out"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/li_apple_shares_out.json"
+reference_ref = "data/ref/li_apple_shares_out.json"
+check = "checks/answer.py:check"
+note = "Balance-sheet shares outstanding at the 2026-06-30 instant; weighted-average counts are durations."
+
+[[task]]
+task_id = "li_walmart_inventory"
+group = "lookup_instant"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_instant", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/li_walmart_inventory.json"
+reference_ref = "data/ref/li_walmart_inventory.json"
+check = "checks/answer.py:check"
+note = "Walmart has one filing; its balance sheet date is sub.period (2026-07-31), the other two inventory instants are comparatives."
+
+[[task]]
+task_id = "ld_nvidia_revenue_3m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ld_nvidia_revenue_3m.json"
+reference_ref = "data/ref/ld_nvidia_revenue_3m.json"
+check = "checks/answer.py:check"
+note = "qtrs = 1 at 2026-07-31; the six-month figure is qtrs = 2."
+
+[[task]]
+task_id = "ld_apple_ni_3m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ld_apple_ni_3m.json"
+reference_ref = "data/ref/ld_apple_ni_3m.json"
+check = "checks/answer.py:check"
+note = "Apple has no noncontrolling interests (no ProfitLoss fact); qtrs = 1 is the quarter."
+
+[[task]]
+task_id = "ld_meta_rd_3m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ld_meta_rd_3m.json"
+reference_ref = "data/ref/ld_meta_rd_3m.json"
+check = "checks/answer.py:check"
+note = "One R&D tag; qtrs = 1 for the three months."
+
+[[task]]
+task_id = "ld_exxon_tax_3m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ld_exxon_tax_3m.json"
+reference_ref = "data/ref/ld_exxon_tax_3m.json"
+check = "checks/answer.py:check"
+note = "qtrs = 1; income taxes paid would be a different, cash tag."
+
+[[task]]
+task_id = "ld_apple_ni_9m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ld_apple_ni_9m.json"
+reference_ref = "data/ref/ld_apple_ni_9m.json"
+check = "checks/answer.py:check"
+note = "Apple is in fiscal Q3, so the year-to-date column is nine months (qtrs = 3)."
+
+[[task]]
+task_id = "ld_nvidia_ni_6m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ld_nvidia_ni_6m.json"
+reference_ref = "data/ref/ld_nvidia_ni_6m.json"
+check = "checks/answer.py:check"
+note = "qtrs = 2 at 2026-07-31; NVIDIA has no ProfitLoss fact."
+
+[[task]]
+task_id = "ld_merck_eps_6m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ld_merck_eps_6m.json"
+reference_ref = "data/ref/ld_merck_eps_6m.json"
+check = "checks/answer.py:check"
+note = "qtrs = 2; the value is negative (a loss per share)."
+
+[[task]]
+task_id = "ld_meta_tax_6m"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ld_meta_tax_6m.json"
+reference_ref = "data/ref/ld_meta_tax_6m.json"
+check = "checks/answer.py:check"
+note = "qtrs = 2 is a net benefit although the three-month figure is an expense."
+
+[[task]]
+task_id = "ld_disney_revenue_ytd"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ld_disney_revenue_ytd.json"
+reference_ref = "data/ref/ld_disney_revenue_ytd.json"
+check = "checks/answer.py:check"
+note = "Disney's fiscal year starts in October, so fiscal year to date at 2026-06-30 is nine months (qtrs = 3)."
+
+[[task]]
+task_id = "ld_mckesson_eps_ytd"
+group = "lookup_duration"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup_duration", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ld_mckesson_eps_ytd.json"
+reference_ref = "data/ref/ld_mckesson_eps_ytd.json"
+check = "checks/answer.py:check"
+note = "McKesson's fiscal year starts in April, so year to date at 2026-06-30 is one quarter (qtrs = 1); no qtrs = 2 fact exists."
+
+[[task]]
+task_id = "pc_amd_inventory_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/pc_amd_inventory_change.json"
+reference_ref = "data/ref/pc_amd_inventory_change.json"
+check = "checks/answer.py:check"
+note = "Both instants are in AMD's one 10-Q."
+
+[[task]]
+task_id = "pc_pfizer_liabilities_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/pc_pfizer_liabilities_change.json"
+reference_ref = "data/ref/pc_pfizer_liabilities_change.json"
+check = "checks/answer.py:check"
+note = "Both instants are in Pfizer's one 10-Q."
+
+[[task]]
+task_id = "pc_nvidia_revenue_growth"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_nvidia_revenue_growth.json"
+reference_ref = "data/ref/pc_nvidia_revenue_growth.json"
+check = "checks/answer.py:check"
+note = "Two qtrs = 1 Revenues facts in one filing; the six-month pair gives a different rate."
+
+[[task]]
+task_id = "pc_merck_rd_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_merck_rd_change.json"
+reference_ref = "data/ref/pc_merck_rd_change.json"
+check = "checks/answer.py:check"
+note = "qtrs = 2 at both ddates; the three-month pair differs."
+
+[[task]]
+task_id = "pc_meta_revenue_growth"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_meta_revenue_growth.json"
+reference_ref = "data/ref/pc_meta_revenue_growth.json"
+check = "checks/answer.py:check"
+note = "Meta reports revenue under one tag only; qtrs = 1 at both ddates."
+
+[[task]]
+task_id = "pc_apple_ni_growth_9m"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_apple_ni_growth_9m.json"
+reference_ref = "data/ref/pc_apple_ni_growth_9m.json"
+check = "checks/answer.py:check"
+note = "qtrs = 3 at both ddates; Apple has no noncontrolling interests."
+
+[[task]]
+task_id = "pc_exxon_ocf_change"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/pc_exxon_ocf_change.json"
+reference_ref = "data/ref/pc_exxon_ocf_change.json"
+check = "checks/answer.py:check"
+note = "Cash flow is reported year to date only (qtrs = 2), at both ddates."
+
+[[task]]
+task_id = "pc_disney_revenue_growth_ytd"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/pc_disney_revenue_growth_ytd.json"
+reference_ref = "data/ref/pc_disney_revenue_growth_ytd.json"
+check = "checks/answer.py:check"
+note = "Disney is in fiscal Q3, so fiscal year to date is qtrs = 3 at 2026-06-30 and at 2025-06-30."
+
+[[task]]
+task_id = "pc_apple_cl_change_fye"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/pc_apple_cl_change_fye.json"
+reference_ref = "data/ref/pc_apple_cl_change_fye.json"
+check = "checks/answer.py:check"
+note = "Apple's previous fiscal year ended 2025-09-30, the only other LiabilitiesCurrent instant in the filing."
+
+[[task]]
+task_id = "pc_walmart_inventory_yoy"
+group = "period_compare"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:period_compare", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/pc_walmart_inventory_yoy.json"
+reference_ref = "data/ref/pc_walmart_inventory_yoy.json"
+check = "checks/answer.py:check"
+note = "Balance sheet date 2026-07-31; one year earlier is 2025-07-31, not the 2026-01-31 fiscal year end also in the filing."
+
+[[task]]
+task_id = "ra_apple_current_ratio"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ra_apple_current_ratio.json"
+reference_ref = "data/ref/ra_apple_current_ratio.json"
+check = "checks/answer.py:check"
+note = "Both instants at 2026-06-30 in one filing."
+
+[[task]]
+task_id = "ra_pfizer_liabilities_to_assets"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ra_pfizer_liabilities_to_assets.json"
+reference_ref = "data/ref/ra_pfizer_liabilities_to_assets.json"
+check = "checks/answer.py:check"
+note = "Both instants at 2026-06-30."
+
+[[task]]
+task_id = "ra_nvidia_gross_margin"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_nvidia_gross_margin.json"
+reference_ref = "data/ref/ra_nvidia_gross_margin.json"
+check = "checks/answer.py:check"
+note = "GrossProfit and Revenues both at qtrs = 1."
+
+[[task]]
+task_id = "ra_nvidia_operating_margin"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_nvidia_operating_margin.json"
+reference_ref = "data/ref/ra_nvidia_operating_margin.json"
+check = "checks/answer.py:check"
+note = "OperatingIncomeLoss and Revenues at qtrs = 1."
+
+[[task]]
+task_id = "ra_nvidia_tax_rate"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_nvidia_tax_rate.json"
+reference_ref = "data/ref/ra_nvidia_tax_rate.json"
+check = "checks/answer.py:check"
+note = "NVIDIA has one pre-tax income tag; qtrs = 1."
+
+[[task]]
+task_id = "ra_apple_debt_to_equity"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_apple_debt_to_equity.json"
+reference_ref = "data/ref/ra_apple_debt_to_equity.json"
+check = "checks/answer.py:check"
+note = "Apple's equity statement has many StockholdersEquity instants; the question pins 2026-06-30."
+
+[[task]]
+task_id = "ra_apple_gross_margin_9m"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ra_apple_gross_margin_9m.json"
+reference_ref = "data/ref/ra_apple_gross_margin_9m.json"
+check = "checks/answer.py:check"
+note = "Apple reports net sales under one revenue tag; both at qtrs = 3."
+
+[[task]]
+task_id = "ra_amd_inventory_turnover"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ra_amd_inventory_turnover.json"
+reference_ref = "data/ref/ra_amd_inventory_turnover.json"
+check = "checks/answer.py:check"
+note = "Total cost of goods and services sold (not the subtotal excluding depreciation), qtrs = 2, over two inventory instants."
+
+[[task]]
+task_id = "ra_disney_net_margin_ytd"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ra_disney_net_margin_ytd.json"
+reference_ref = "data/ref/ra_disney_net_margin_ytd.json"
+check = "checks/answer.py:check"
+note = "Fiscal year to date is qtrs = 3; the parent's share is NetIncomeLoss, not ProfitLoss."
+
+[[task]]
+task_id = "ra_goldman_book_value_per_share"
+group = "ratio"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:ratio", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ra_goldman_book_value_per_share.json"
+reference_ref = "data/ref/ra_goldman_book_value_per_share.json"
+check = "checks/answer.py:check"
+note = "Outstanding (291.4M) and issued (936.3M) shares are both reported; the question names outstanding."
+
+[[task]]
+task_id = "ar_goodwill_top3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ar_goodwill_top3.json"
+reference_ref = "data/ref/ar_goodwill_top3.json"
+check = "checks/answer.py:check"
+note = "Third (83.2B) and fourth (74.7B) are far apart."
+
+[[task]]
+task_id = "ar_net_income_top1"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ar_net_income_top1.json"
+reference_ref = "data/ref/ar_net_income_top1.json"
+check = "checks/answer.py:check"
+note = "First (112.2B) leads second (62.6B) by a wide margin."
+
+[[task]]
+task_id = "ar_liabilities_top5"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/ar_liabilities_top5.json"
+reference_ref = "data/ref/ar_liabilities_top5.json"
+check = "checks/answer.py:check"
+note = "Fifth (2.68T) and sixth (2.10T) are far apart."
+
+[[task]]
+task_id = "ar_coke_assets_rank"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ar_coke_assets_rank.json"
+reference_ref = "data/ref/ar_coke_assets_rank.json"
+check = "checks/answer.py:check"
+note = "Rank = 1 + number of filers with strictly larger assets; no filer ties Coca-Cola."
+
+[[task]]
+task_id = "ar_net_loss_bottom3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ar_net_loss_bottom3.json"
+reference_ref = "data/ref/ar_net_loss_bottom3.json"
+check = "checks/answer.py:check"
+note = "Third (-8.2B) and fourth (-5.5B) are far apart."
+
+[[task]]
+task_id = "ar_10k_largest_assets"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ar_10k_largest_assets.json"
+reference_ref = "data/ref/ar_10k_largest_assets.json"
+check = "checks/answer.py:check"
+note = "Seven 10-K filers; the first (758B) is far ahead of the second (130B)."
+
+[[task]]
+task_id = "ar_trillion_assets_count"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/ar_trillion_assets_count.json"
+reference_ref = "data/ref/ar_trillion_assets_count.json"
+check = "checks/answer.py:check"
+note = "No filer sits near the 1T threshold."
+
+[[task]]
+task_id = "ar_eps_top5"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_eps_top5.json"
+reference_ref = "data/ref/ar_eps_top5.json"
+check = "checks/answer.py:check"
+note = "Fifth 17.83 versus sixth 17.73: distinct values, no tie."
+
+[[task]]
+task_id = "ar_offcycle_assets_top3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_offcycle_assets_top3.json"
+reference_ref = "data/ref/ar_offcycle_assets_top3.json"
+check = "checks/answer.py:check"
+note = "Balance sheet date = sub.period; third (293.9B) and fourth (188.1B) are far apart."
+
+[[task]]
+task_id = "ar_assets_increase_top3"
+group = "aggregate_rank"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_rank", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/ar_assets_increase_top3.json"
+reference_ref = "data/ref/ar_assets_increase_top3.json"
+check = "checks/answer.py:check"
+note = "Third (318.4B) and fourth (277.6B) increases are far apart."
+
+[[task]]
+task_id = "as_electric_count"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/as_electric_count.json"
+reference_ref = "data/ref/as_electric_count.json"
+check = "checks/answer.py:check"
+note = "A plain count over sub."
+
+[[task]]
+task_id = "as_reit_filers"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/as_reit_filers.json"
+reference_ref = "data/ref/as_reit_filers.json"
+check = "checks/answer.py:check"
+note = "Distinct cik; one REIT appears only through a 10-Q/A."
+
+[[task]]
+task_id = "as_state_bank_deposits"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/as_state_bank_deposits.json"
+reference_ref = "data/ref/as_state_bank_deposits.json"
+check = "checks/answer.py:check"
+note = "All 16 such filers report Deposits at 2026-06-30."
+
+[[task]]
+task_id = "as_pharma_avg_assets"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_pharma_avg_assets.json"
+reference_ref = "data/ref/as_pharma_avg_assets.json"
+check = "checks/answer.py:check"
+note = "Eight filings; OPKO's 10-Q/A for the same period is excluded by the form rule, so it is not double counted."
+
+[[task]]
+task_id = "as_rail_net_income"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_rail_net_income.json"
+reference_ref = "data/ref/as_rail_net_income.json"
+check = "checks/answer.py:check"
+note = "All four railroads report NetIncomeLoss at qtrs = 1."
+
+[[task]]
+task_id = "as_oil_gas_names"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_oil_gas_names.json"
+reference_ref = "data/ref/as_oil_gas_names.json"
+check = "checks/answer.py:check"
+note = "BKV's 10-K/A is excluded by the form rule; its 10-Q is included."
+
+[[task]]
+task_id = "as_big_national_banks"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_big_national_banks.json"
+reference_ref = "data/ref/as_big_national_banks.json"
+check = "checks/answer.py:check"
+note = "Fifth 532B, sixth 484B; the one 6021 filer without a Deposits fact is far smaller."
+
+[[task]]
+task_id = "as_pharma_goodwill"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/as_pharma_goodwill.json"
+reference_ref = "data/ref/as_pharma_goodwill.json"
+check = "checks/answer.py:check"
+note = "All eight filings report Goodwill; the form rule excludes OPKO's duplicate 10-Q/A."
+
+[[task]]
+task_id = "as_most_common_sic"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/as_most_common_sic.json"
+reference_ref = "data/ref/as_most_common_sic.json"
+check = "checks/answer.py:check"
+note = "6021 has 23 filings; the runners-up have 16."
+
+[[task]]
+task_id = "as_refiner_avg_current_ratio"
+group = "aggregate_sector"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregate_sector", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/as_refiner_avg_current_ratio.json"
+reference_ref = "data/ref/as_refiner_avg_current_ratio.json"
+check = "checks/answer.py:check"
+note = "All six refiners report both current totals; the question fixes the mean of ratios, not the ratio of sums."
+
+[[task]]
+task_id = "cm_ice_cash"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "config"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cm_ice_cash.json"
+reference_ref = "data/ref/cm_ice_cash.json"
+check = "checks/answer.py:check"
+note = "ICE also reports cash including restricted cash and margin deposits (116.6B); cash and cash equivalents alone is 1.07B."
+
+[[task]]
+task_id = "cm_gm_contract_revenue"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cm_gm_contract_revenue.json"
+reference_ref = "data/ref/cm_gm_contract_revenue.json"
+check = "checks/answer.py:check"
+note = "GM also reports total Revenues and revenue not from contracts with customers; one tag is customer-contract revenue."
+
+[[task]]
+task_id = "cm_centene_total_revenue"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cm_centene_total_revenue.json"
+reference_ref = "data/ref/cm_centene_total_revenue.json"
+check = "checks/answer.py:check"
+note = "Premiums are outside customer-contract revenue (44.4B); total Revenues (53.6B) includes them."
+
+[[task]]
+task_id = "cm_pfizer_taxes_paid"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cm_pfizer_taxes_paid.json"
+reference_ref = "data/ref/cm_pfizer_taxes_paid.json"
+check = "checks/answer.py:check"
+note = "Income tax expense (54M) is the accrual concept; cash paid is 3.54B."
+
+[[task]]
+task_id = "cm_comcast_depreciation"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cm_comcast_depreciation.json"
+reference_ref = "data/ref/cm_comcast_depreciation.json"
+check = "checks/answer.py:check"
+note = "Comcast reports Depreciation, AmortizationOfIntangibleAssets and their total DepreciationDepletionAndAmortization."
+
+[[task]]
+task_id = "cm_goldman_shares_outstanding"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cm_goldman_shares_outstanding.json"
+reference_ref = "data/ref/cm_goldman_shares_outstanding.json"
+check = "checks/answer.py:check"
+note = "Goldman reports issued (936.3M, incl. treasury) and outstanding (291.4M) shares."
+
+[[task]]
+task_id = "cm_fannie_ni_common"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cm_fannie_ni_common.json"
+reference_ref = "data/ref/cm_fannie_ni_common.json"
+check = "checks/answer.py:check"
+note = "Net income is 3.98B; after senior preferred dividends 152M is available to common (basic and diluted tags agree)."
+
+[[task]]
+task_id = "cm_exxon_interest_paid_net"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cm_exxon_interest_paid_net.json"
+reference_ref = "data/ref/cm_exxon_interest_paid_net.json"
+check = "checks/answer.py:check"
+note = "Exxon reports interest expense (522M), gross interest paid (910M), capitalized (508M) and net paid (402M)."
+
+[[task]]
+task_id = "cm_jpm_net_revenue"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cm_jpm_net_revenue.json"
+reference_ref = "data/ref/cm_jpm_net_revenue.json"
+check = "checks/answer.py:check"
+note = "JPMorgan reports several revenue components; RevenuesNetOfInterestExpense is the one total net revenue fact."
+
+[[task]]
+task_id = "cm_boeing_loss_common"
+group = "concept_mapping"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cm_boeing_loss_common.json"
+reference_ref = "data/ref/cm_boeing_loss_common.json"
+check = "checks/answer.py:check"
+note = "Boeing reports ProfitLoss (-428M), NetIncomeLoss (-444M) and the common shareholders' figure (-530M)."
+
+[[task]]
+task_id = "cc_exxon_fcf"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "config"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_exxon_fcf.json"
+reference_ref = "data/ref/cc_exxon_fcf.json"
+check = "checks/answer.py:check"
+note = "Both cash-flow facts are year to date (qtrs = 2)."
+
+[[task]]
+task_id = "cc_apple_working_capital"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_apple_working_capital.json"
+reference_ref = "data/ref/cc_apple_working_capital.json"
+check = "checks/answer.py:check"
+note = "Both instants at 2026-06-30."
+
+[[task]]
+task_id = "cc_pfizer_tangible_equity"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_pfizer_tangible_equity.json"
+reference_ref = "data/ref/cc_pfizer_tangible_equity.json"
+check = "checks/answer.py:check"
+note = "Parent equity, not equity including the 302M noncontrolling interest."
+
+[[task]]
+task_id = "cc_apple_shareholder_returns"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_apple_shareholder_returns.json"
+reference_ref = "data/ref/cc_apple_shareholder_returns.json"
+check = "checks/answer.py:check"
+note = "Apple reports dividends paid under one tag; both at qtrs = 3."
+
+[[task]]
+task_id = "cc_comcast_ebitda"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/cc_comcast_ebitda.json"
+reference_ref = "data/ref/cc_comcast_ebitda.json"
+check = "checks/answer.py:check"
+note = "Total D&A (7.553B) equals depreciation plus intangible amortization, so either route agrees."
+
+[[task]]
+task_id = "cc_exxon_total_debt"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_exxon_total_debt.json"
+reference_ref = "data/ref/cc_exxon_total_debt.json"
+check = "checks/answer.py:check"
+note = "Exxon reports exactly one current-debt and one noncurrent-debt total at 2026-06-30."
+
+[[task]]
+task_id = "cc_verizon_net_debt"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_verizon_net_debt.json"
+reference_ref = "data/ref/cc_verizon_net_debt.json"
+check = "checks/answer.py:check"
+note = "Verizon's only current-debt fact is LongTermDebtCurrent; no short-term borrowings tag is reported."
+
+[[task]]
+task_id = "cc_apple_fcf_9m"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_apple_fcf_9m.json"
+reference_ref = "data/ref/cc_apple_fcf_9m.json"
+check = "checks/answer.py:check"
+note = "Apple is in fiscal Q3: year to date is qtrs = 3, the only cash-flow duration in the filing."
+
+[[task]]
+task_id = "cc_exxon_fcf_after_dividends"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_exxon_fcf_after_dividends.json"
+reference_ref = "data/ref/cc_exxon_fcf_after_dividends.json"
+check = "checks/answer.py:check"
+note = "Exxon reports common and noncontrolling dividend payments separately; the question includes both."
+
+[[task]]
+task_id = "cc_kkr_nci_comprehensive"
+group = "concept_composition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_composition", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/cc_kkr_nci_comprehensive.json"
+reference_ref = "data/ref/cc_kkr_nci_comprehensive.json"
+check = "checks/answer.py:check"
+note = "KKR reports no direct noncontrolling comprehensive income fact for the quarter, so the difference is the only route."
+
+[[task]]
+task_id = "di_kkr_ni_parent"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/di_kkr_ni_parent.json"
+reference_ref = "data/ref/di_kkr_ni_parent.json"
+check = "checks/answer.py:check"
+note = "ProfitLoss (1.13B) includes noncontrolling interests; the parent's share is 700M."
+
+[[task]]
+task_id = "di_blackstone_total_equity"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_blackstone_total_equity.json"
+reference_ref = "data/ref/di_blackstone_total_equity.json"
+check = "checks/answer.py:check"
+note = "Parent equity is 9.0B; including noncontrolling interests it is 21.1B."
+
+[[task]]
+task_id = "di_kkr_ci_parent"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_kkr_ci_parent.json"
+reference_ref = "data/ref/di_kkr_ci_parent.json"
+check = "checks/answer.py:check"
+note = "Including noncontrolling interests the figure is 1.28B; the parent's is 855M."
+
+[[task]]
+task_id = "di_opko_assets_q1_amended"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_opko_assets_q1_amended.json"
+reference_ref = "data/ref/di_opko_assets_q1_amended.json"
+check = "checks/answer.py:check"
+note = "OPKO has three filings; only the Q1 amendment carries a 2026-03-31 balance sheet."
+
+[[task]]
+task_id = "di_bkv_assets_2024"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/di_bkv_assets_2024.json"
+reference_ref = "data/ref/di_bkv_assets_2024.json"
+check = "checks/answer.py:check"
+note = "BKV's 10-Q and 10-K/A both report 2025-12-31; only the 10-K/A has the 2024-12-31 comparative."
+
+[[task]]
+task_id = "di_sharonai_eps_latest"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_sharonai_eps_latest.json"
+reference_ref = "data/ref/di_sharonai_eps_latest.json"
+check = "checks/answer.py:check"
+note = "The 10-Q (filed 2026-08-06) says -2.41; the 10-Q/A (filed 2026-08-11) restates it to -0.27."
+
+[[task]]
+task_id = "di_sharonai_eps_original"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_sharonai_eps_original.json"
+reference_ref = "data/ref/di_sharonai_eps_original.json"
+check = "checks/answer.py:check"
+note = "The original 10-Q value -2.41, superseded by the 10-Q/A's -0.27."
+
+[[task]]
+task_id = "di_bloom_revenue_latest"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_bloom_revenue_latest.json"
+reference_ref = "data/ref/di_bloom_revenue_latest.json"
+check = "checks/answer.py:check"
+note = "The 10-Q and its next-day 10-Q/A both report the figure (same value); the rule picks the 10-Q/A."
+
+[[task]]
+task_id = "di_opko_net_loss_6m_latest"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_opko_net_loss_6m_latest.json"
+reference_ref = "data/ref/di_opko_net_loss_6m_latest.json"
+check = "checks/answer.py:check"
+note = "The 10-Q (2026-07-27) and 10-Q/A (2026-08-28) for 2026-06-30 agree; the Q1 10-Q/A has no six-month figure."
+
+[[task]]
+task_id = "di_disney_ni_total_ytd"
+group = "disambiguation"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/di_disney_ni_total_ytd.json"
+reference_ref = "data/ref/di_disney_ni_total_ytd.json"
+check = "checks/answer.py:check"
+note = "Fiscal year to date is qtrs = 3; including noncontrolling interests is ProfitLoss (7.79B), not NetIncomeLoss (7.29B)."
+
+[[task]]
+task_id = "un_starbucks_assets"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/un_starbucks_assets.json"
+reference_ref = "data/ref/un_starbucks_assets.json"
+check = "checks/answer.py:check"
+note = "Starbucks is outside the subset (not among the largest filers); no sub row."
+
+[[task]]
+task_id = "un_chipotle_revenue"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/un_chipotle_revenue.json"
+reference_ref = "data/ref/un_chipotle_revenue.json"
+check = "checks/answer.py:check"
+note = "Chipotle is outside the subset; no sub row."
+
+[[task]]
+task_id = "un_nike_assets"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/un_nike_assets.json"
+reference_ref = "data/ref/un_nike_assets.json"
+check = "checks/answer.py:check"
+note = "Nike is outside the subset; no sub row."
+
+[[task]]
+task_id = "un_costco_net_income"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/un_costco_net_income.json"
+reference_ref = "data/ref/un_costco_net_income.json"
+check = "checks/answer.py:check"
+note = "Costco has no filing in the database; no sub row."
+
+[[task]]
+task_id = "un_jpm_gross_profit"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/un_jpm_gross_profit.json"
+reference_ref = "data/ref/un_jpm_gross_profit.json"
+check = "checks/answer.py:check"
+note = "Banks do not report gross profit; JPMorgan has no GrossProfit fact."
+
+[[task]]
+task_id = "un_wells_inventory"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/un_wells_inventory.json"
+reference_ref = "data/ref/un_wells_inventory.json"
+check = "checks/answer.py:check"
+note = "Wells Fargo reports no inventory tag of any kind."
+
+[[task]]
+task_id = "un_duke_rd"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/un_duke_rd.json"
+reference_ref = "data/ref/un_duke_rd.json"
+check = "checks/answer.py:check"
+note = "Duke reports no research and development tag of any kind."
+
+[[task]]
+task_id = "un_exxon_ocf_3m"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_exxon_ocf_3m.json"
+reference_ref = "data/ref/un_exxon_ocf_3m.json"
+check = "checks/answer.py:check"
+note = "Exxon's cash flow statement is year to date only (qtrs = 2) and its Q1 10-Q is not in the database."
+
+[[task]]
+task_id = "un_apple_ni_6m"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_apple_ni_6m.json"
+reference_ref = "data/ref/un_apple_ni_6m.json"
+check = "checks/answer.py:check"
+note = "Apple is in fiscal Q3 and reports three- and nine-month figures only."
+
+[[task]]
+task_id = "un_amd_assets_2024"
+group = "unanswerable"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:unanswerable", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/un_amd_assets_2024.json"
+reference_ref = "data/ref/un_amd_assets_2024.json"
+check = "checks/answer.py:check"
+note = "AMD's 10-Q has balance sheets at 2026-06-30 and 2025-12-31 only."

@@ -1,0 +1,8 @@
+{
+ "answer": 1.2412,
+ "answer_format": "number",
+ "sql": "SELECT ROUND((SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'ADVANCED MICRO DEVICES INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'CostOfGoodsAndServicesSold' AND n.ddate = 20260630 AND n.qtrs = 2 AND n.uom = 'USD') * 1.0 / (((SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'ADVANCED MICRO DEVICES INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'InventoryNet' AND n.ddate = 20260630 AND n.qtrs = 0 AND n.uom = 'USD') + (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'ADVANCED MICRO DEVICES INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'InventoryNet' AND n.ddate = 20251231 AND n.qtrs = 0 AND n.uom = 'USD')) / 2.0), 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}
