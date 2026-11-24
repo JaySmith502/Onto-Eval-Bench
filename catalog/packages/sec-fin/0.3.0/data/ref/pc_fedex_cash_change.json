@@ -1,0 +1,5 @@
+{
+ "answer": 7809000000.0,
+ "answer_format": "number",
+ "sql": "SELECT (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'FEDEX CORP' AND s.form = '10-K' AND s.period = 20260531 AND n.tag = 'CashAndCashEquivalentsAtCarryingValue' AND n.ddate = 20260531 AND n.qtrs = 0 AND n.uom = 'USD') - (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'FEDEX CORP' AND s.form = '10-K' AND s.period = 20260531 AND n.tag = 'CashAndCashEquivalentsAtCarryingValue' AND n.ddate = 20250531 AND n.qtrs = 0 AND n.uom = 'USD')"
+}

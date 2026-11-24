@@ -1,0 +1,5 @@
+{
+ "answer": 4915000000.0,
+ "answer_format": "number",
+ "sql": "SELECT (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'PROCTER & GAMBLE CO' AND s.form = '10-K' AND s.period = 20260630 AND n.tag = 'NetCashProvidedByUsedInOperatingActivities' AND n.ddate = 20260630 AND n.qtrs = 4 AND n.uom = 'USD') - (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'PROCTER & GAMBLE CO' AND s.form = '10-K' AND s.period = 20260630 AND n.tag = 'PaymentsToAcquirePropertyPlantAndEquipment' AND n.ddate = 20260630 AND n.qtrs = 4 AND n.uom = 'USD') - (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'PROCTER & GAMBLE CO' AND s.form = '10-K' AND s.period = 20260630 AND n.tag = 'PaymentsOfDividends' AND n.ddate = 20260630 AND n.qtrs = 4 AND n.uom = 'USD')"
+}

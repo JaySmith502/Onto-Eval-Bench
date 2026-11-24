@@ -1,0 +1,7 @@
+{
+ "answer": [
+  "ROYAL CARIBBEAN CRUISES LTD"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num a ON a.adsh = s.adsh AND a.tag = 'AssetsCurrent' AND a.ddate = 20260630 AND a.qtrs = 0 AND a.uom = 'USD' JOIN num l ON l.adsh = s.adsh AND l.tag = 'LiabilitiesCurrent' AND l.ddate = 20260630 AND l.qtrs = 0 AND l.uom = 'USD' WHERE s.form = '10-Q' AND s.period = 20260630 ORDER BY a.value / l.value LIMIT 1"
+}

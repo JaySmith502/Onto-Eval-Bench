@@ -1,0 +1,9 @@
+{
+ "answer": [
+  "ZIONS BANCORPORATION, NATIONAL ASSOCIATION /UT/",
+  "CAPITAL ONE FINANCIAL CORP",
+  "JPMORGAN CHASE & CO"
+ ],
+ "answer_format": "names",
+ "sql": "SELECT s.name FROM sub s JOIN num i ON i.adsh = s.adsh AND i.tag = 'NetIncomeLoss' AND i.ddate = 20260630 AND i.qtrs = 1 AND i.uom = 'USD' JOIN num a ON a.adsh = s.adsh AND a.tag = 'Assets' AND a.ddate = 20260630 AND a.qtrs = 0 AND a.uom = 'USD' WHERE s.form = '10-Q' AND s.period = 20260630 AND s.sic = 6021 ORDER BY i.value / a.value DESC LIMIT 3"
+}

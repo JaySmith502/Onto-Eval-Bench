@@ -1,0 +1,5 @@
+{
+ "answer": null,
+ "answer_format": "number",
+ "sql": "SELECT 'NOT_IN_DATABASE' WHERE NOT EXISTS (SELECT n.value FROM sub s JOIN dnum n ON n.adsh = s.adsh WHERE s.name = 'MICROSOFT CORP' AND s.form = '10-K' AND s.period = 20260630 AND n.tag = 'RevenueFromContractWithCustomerExcludingAssessedTax' AND n.ddate = 20260630 AND n.qtrs = 4 AND n.uom = 'USD' AND n.ndims = 1 AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'ProductOrService' AND d.member = 'Azure'))"
+}

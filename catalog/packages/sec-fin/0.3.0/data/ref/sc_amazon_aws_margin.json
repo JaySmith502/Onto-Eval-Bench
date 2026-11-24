@@ -1,0 +1,8 @@
+{
+ "answer": 0.3936,
+ "answer_format": "number",
+ "sql": "SELECT ROUND((SELECT n.value FROM sub s JOIN dnum n ON n.adsh = s.adsh WHERE s.name = 'AMAZON COM INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'OperatingIncomeLoss' AND n.ddate = 20260630 AND n.qtrs = 1 AND n.uom = 'USD' AND n.ndims = 1 AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'BusinessSegments' AND d.member = 'AmazonWebServicesSegment')) * 1.0 / (SELECT n.value FROM sub s JOIN dnum n ON n.adsh = s.adsh WHERE s.name = 'AMAZON COM INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'RevenueFromContractWithCustomerExcludingAssessedTax' AND n.ddate = 20260630 AND n.qtrs = 1 AND n.uom = 'USD' AND n.ndims = 1 AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'BusinessSegments' AND d.member = 'AmazonWebServicesSegment')), 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}

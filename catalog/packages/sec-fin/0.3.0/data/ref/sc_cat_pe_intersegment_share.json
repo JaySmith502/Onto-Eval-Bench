@@ -1,0 +1,8 @@
+{
+ "answer": 0.1752,
+ "answer_format": "number",
+ "sql": "SELECT ROUND(ABS((SELECT n.value FROM sub s JOIN dnum n ON n.adsh = s.adsh WHERE s.name = 'CATERPILLAR INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Revenues' AND n.ddate = 20260630 AND n.qtrs = 1 AND n.uom = 'USD' AND n.ndims = 2 AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'BusinessSegments' AND d.member = 'PowerEnergy') AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'ConsolidationItems' AND d.member = 'IntersegmentElimination'))) * 1.0 / (SELECT n.value FROM sub s JOIN dnum n ON n.adsh = s.adsh WHERE s.name = 'CATERPILLAR INC' AND s.form = '10-Q' AND s.period = 20260630 AND n.tag = 'Revenues' AND n.ddate = 20260630 AND n.qtrs = 1 AND n.uom = 'USD' AND n.ndims = 2 AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'BusinessSegments' AND d.member = 'PowerEnergy') AND EXISTS (SELECT 1 FROM dim d WHERE d.fact_id = n.fact_id AND d.axis = 'ConsolidationItems' AND d.member = 'OperatingSegments')), 4)",
+ "tolerance": {
+  "abs": 0.0001
+ }
+}

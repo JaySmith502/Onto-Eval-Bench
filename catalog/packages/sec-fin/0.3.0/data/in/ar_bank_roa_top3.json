@@ -1,0 +1,4 @@
+{
+ "answer_format": "names",
+ "question": "According to the filings in this database, among original 10-Q filings (form 10-Q, not 10-Q/A) with a period ending 2026-06-30 by filers with SIC code 6021 (national commercial banks), which three had the highest ratio of net income attributable to the company for the three months ended 2026-06-30 to total assets on 2026-06-30? Answer with company names exactly as stored in sub.name."
+}

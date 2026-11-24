@@ -1,0 +1,5 @@
+{
+ "answer": 25492000000.0,
+ "answer_format": "number",
+ "sql": "SELECT (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'CISCO SYSTEMS, INC.' AND s.form = '10-K' AND s.period = 20260731 AND n.tag = 'GrossProfit' AND n.ddate = 20260731 AND n.qtrs = 4 AND n.uom = 'USD') - (SELECT n.value FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.name = 'CISCO SYSTEMS, INC.' AND s.form = '10-K' AND s.period = 20260731 AND n.tag = 'OperatingIncomeLoss' AND n.ddate = 20260731 AND n.qtrs = 4 AND n.uom = 'USD')"
+}

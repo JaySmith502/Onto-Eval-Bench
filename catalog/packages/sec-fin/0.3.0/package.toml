@@ -1,0 +1,59 @@
+suite = "frozen_core"
+provenance = "SEC EDGAR Financial Statement Data Sets 2026q3, https://www.sec.gov/files/dera/data/financial-statement-data-sets/2026q3.zip, downloaded 2026-11-24; subset: the 300 filers with the largest reported Assets plus the 10 largest other filers that filed a 10-K/A or 10-Q/A in the quarter, without co-registrant copies of another filer's filing; axis and member labels from the SEC Financial Statement and Notes data sets https://www.sec.gov/files/dera/data/financial-statement-notes-data-sets/2026_07_notes.zip, https://www.sec.gov/files/dera/data/financial-statement-notes-data-sets/2026_08_notes.zip, https://www.sec.gov/files/dera/data/financial-statement-notes-data-sets/2026_09_notes.zip"
+usage_rights = "public domain (US government work)"
+taxonomy_version = "1"
+controlled_model = ["claude-haiku-5-5", "2026-11"]
+permitted_tools = []
+external_access = false
+human_assistance = "none"
+limitations = [
+  "100 tasks in 11 scenario groups of 6 to 13 tasks; group-level uncertainty rests on 11 clusters.",
+  "Single quarter of data (2026q3); one filing season, so period coverage is narrow.",
+  "Subset: the 300 filers with the largest reported Assets among 10-K, 10-Q and their amendments, plus the 10 largest other filers that filed a 10-K/A or 10-Q/A, without co-registrant copies (the 0.2.0 rule; the subset is unchanged).",
+  "Standard taxonomy tags only: facts on company-extension tags are dropped, dimensional or not. Axes and members keep the filer's own names, since a dimensional fact is only reachable through them.",
+  "Dimensional facts whose FSDS segments value is not a clean list of 'Axis=Member;' pairs (typed dimensions whose value contains '=', ';' or a line break, such as some investment identifiers) are dropped.",
+  "dimensions.json labels axes and members from the SEC Financial Statement and Notes data sets (2026_07 to 2026_09): a standard element gets the publisher's label by the definitions.json rule, a filer's element the filer's label. Names that resolve to no element (typed member values) have no label.",
+  "Definitions and dimension labels are gated together by information_access 'definitions'; the schema-only baseline sees neither, only the table comments in schema.sql.",
+  "A segment total can appear twice: alone and with ConsolidationItems=OperatingSegments, with equal or different values (external versus total sales). Every question names which one it wants.",
+  "Several filers report a parent member and its children on the same axis (Product and iPhone, NonUs and Europe); summing every member of an axis double counts.",
+  "Tasks are not fully independent: MICROSOFT CORP appears in 13 tasks and CISCO SYSTEMS, INC. in 9, and several segment tasks reuse one filing (Apple, Eli Lilly, Caterpillar).",
+  "Ratio and growth answers are rounded to 4 decimal places and accepted within an absolute 0.0001; other numbers within a relative 1e-6.",
+  "Unanswerable tasks have a null reference, reached only by an explicit abstention (the llm-sql adapter returns null only for a query result of exactly 'NOT_IN_DATABASE'); five of the nine ask for a breakdown the filer does not report."
+]
+
+[[data]]
+path = "data/definitions.json"
+sha256 = "10643dbe72a22121726a6d03e9c491e6778298660a124c8ff1cd284cadf9c5f9"
+
+[[data]]
+path = "data/dimensions.json"
+sha256 = "99d750d50aa2181c37a05887241ab44c02ff8d316d3c036263e479b8f3578e95"
+
+[[data]]
+path = "data/fsds.sqlite"
+sha256 = "9703e85af41a68e6c74a53c85fe476d74bf90c58f15eb944e1a4c5fe5920612a"
+
+[[data]]
+path = "data/schema.sql"
+sha256 = "6a3dcc9008c874a6aaa812b20403b1ab2eca5a449f99c7268714f04fce6cb037"
+
+[budget.controlled]
+max_usd = 5.0
+build_timeout_s = 300
+task_timeout_s = 120
+memory_mb = 2048
+max_attempts = 2
+
+[budget.native]
+max_usd = 5.0
+build_timeout_s = 300
+task_timeout_s = 120
+memory_mb = 2048
+max_attempts = 2
+
+[analysis]
+min_meaningful_diff = 0.05
+bootstrap_resamples = 2000
+seed = 7
+min_groups = 8
+multiplicity = "holm"

@@ -1,0 +1,4 @@
+{
+ "answer_format": "names",
+ "question": "According to the filings in this database, among original 10-Q filings (form 10-Q, not 10-Q/A) with a period ending 2026-06-30, which three filers reported the largest capital expenditures for the six months ended 2026-06-30, where a filer reports capital expenditures either as payments to acquire property, plant and equipment or as payments to acquire productive assets? Answer with company names exactly as stored in sub.name."
+}

@@ -1,4 +1,5 @@
-"""sec-fin@0.2.0 check: its rules, and every shipped reference scores 1.0 against itself and 0.0 when perturbed."""
+"""sec-fin answer check (0.2.0, copied unchanged into 0.3.0): its rules, and every shipped reference scores 1.0 against
+itself and 0.0 when perturbed."""
 from __future__ import annotations
 
 import importlib.util
@@ -11,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 PKG = Path(__file__).resolve().parents[1] / "catalog" / "packages" / "sec-fin" / "0.2.0"
+PACKAGES = [PKG, PKG.with_name("0.3.0")]
 _spec = importlib.util.spec_from_file_location("sec_fin_020_answer", PKG / "checks" / "answer.py")
 answer = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(answer)
@@ -75,22 +77,28 @@ def perturb(ref):
 
 
 class ShippedReferences(unittest.TestCase):
+    def test_the_check_is_shared(self):
+        body = [(p / "checks" / "answer.py").read_text().split("\n", 1)[1] for p in PACKAGES]
+        self.assertEqual(body[0], body[1])
+
     def test_every_reference_scores_itself_and_fails_perturbed(self):
-        tasks = tomllib.loads((PKG / "tasks.toml").read_text())["task"]
-        self.assertEqual(len(tasks), 100)
-        for t in tasks:
-            ref = json.loads((PKG / t["reference_ref"]).read_text())
-            with self.subTest(t["task_id"]):
-                self.assertEqual(score(ref, ref["answer"]), 1.0)
-                self.assertEqual(score(ref, perturb(ref)), 0.0)
+        for pkg in PACKAGES:
+            tasks = tomllib.loads((pkg / "tasks.toml").read_text())["task"]
+            self.assertEqual(len(tasks), 100)
+            for t in tasks:
+                ref = json.loads((pkg / t["reference_ref"]).read_text())
+                with self.subTest(f"{pkg.name}/{t['task_id']}"):
+                    self.assertEqual(score(ref, ref["answer"]), 1.0)
+                    self.assertEqual(score(ref, perturb(ref)), 0.0)
 
     def test_every_gold_query_scores_through_the_adapter(self):
         """The adapter's own result conversion, so unanswerable gold SQL must abstain the way a candidate does."""
-        for t in tomllib.loads((PKG / "tasks.toml").read_text())["task"]:
-            ref = json.loads((PKG / t["reference_ref"]).read_text())
-            with self.subTest(t["task_id"]):
-                got = llm_sql.execute(PKG / "data" / "fsds.sqlite", ref["sql"], ref["answer_format"])
-                self.assertEqual(score(ref, got), 1.0)
+        for pkg in PACKAGES:
+            for t in tomllib.loads((pkg / "tasks.toml").read_text())["task"]:
+                ref = json.loads((pkg / t["reference_ref"]).read_text())
+                with self.subTest(f"{pkg.name}/{t['task_id']}"):
+                    got = llm_sql.execute(pkg / "data" / "fsds.sqlite", ref["sql"], ref["answer_format"])
+                    self.assertEqual(score(ref, got), 1.0)
 
 
 if __name__ == "__main__":
