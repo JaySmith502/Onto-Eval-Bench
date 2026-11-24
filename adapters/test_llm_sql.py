@@ -128,6 +128,31 @@ class AdapterTest(unittest.TestCase):
         r, _ = self.run_task([(200, sql_reply("SELECT value FROM num")), (200, sql_reply("SELECT COUNT(*) FROM num"))])
         self.assertEqual(r["output"]["answer"], 2.0)  # multi-row number result triggered the repair turn
 
+    def test_single_null_row_is_a_null_answer(self):
+        self.build(["schema"])
+        r, stub = self.run_task([(200, sql_reply("SELECT NULL"))])
+        self.assertEqual((r["status"], r["output"]["answer"]), ("completed", None))
+        self.assertEqual(len(stub.requests), 1)
+        r, _ = self.run_task([(200, sql_reply("SELECT SUM(value) FROM num WHERE tag = 'Absent'"))])
+        self.assertIsNone(r["output"]["answer"])
+        r, _ = self.run_task([(200, sql_reply("SELECT NULL"))], fmt="names")
+        self.assertEqual((r["status"], r["output"]["answer"]), ("completed", None))
+
+    def test_zero_rows_gets_the_repair_turn(self):
+        self.build(["schema"])
+        r, stub = self.run_task([(200, sql_reply("SELECT value FROM num WHERE tag = 'Absent'")), (200, sql_reply("SELECT NULL"))])
+        self.assertIsNone(r["output"]["answer"])
+        self.assertIn("no rows", stub.requests[1]["messages"][-1]["content"])
+        r, _ = self.run_task([(200, sql_reply("SELECT name FROM sub WHERE 0"))] * 2, fmt="names")
+        self.assertEqual(r["status"], "invalid_output")
+
+    def test_prompt_states_null_and_rounding_conventions(self):
+        self.build(["schema"])
+        _, stub = self.run_task([(200, sql_reply("SELECT 1"))])
+        prompt = stub.requests[0]["messages"][0]["content"]
+        self.assertIn("SELECT NULL", prompt)
+        self.assertIn("ROUND(x, 4)", prompt)
+
     def test_read_only(self):
         self.build(["schema"])
         r, _ = self.run_task([(200, sql_reply("DELETE FROM num")), (200, sql_reply("DELETE FROM num"))])
@@ -138,7 +163,7 @@ class AdapterTest(unittest.TestCase):
         self.build(["schema"])
         r, stub = self.run_task([(200, sql_reply("SELECT 1"))])
         self.assertEqual(r["model_used"], MODEL)
-        self.assertEqual(r["adapter_version"], "llm-sql-1")
+        self.assertEqual(r["adapter_version"], "llm-sql-2")
         c = r["cost"]
         self.assertEqual((c["tokens_in"], c["tokens_out"], c["measured"]), (1000, 200, True))
         self.assertAlmostEqual(c["usd"], 1000 * 0.10 / 1e6 + 200 * 0.50 / 1e6)
