@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Build catalog/packages/sec-fin/0.1.0 from an SEC Financial Statement Data Sets quarterly zip.
+"""Build catalog/packages/sec-fin/<version> from an SEC Financial Statement Data Sets quarterly zip.
 
 Stdlib only. Rerunnable and byte-reproducible for a given zip: every insert is sorted, the page
 size is fixed and the database is VACUUMed. References come from running each task's gold SQL.
+0.1.0 is defined here; each later version's tasks and schema live in their own module (sec_fin_0_2_0).
 
-    python3 tools/build_sec_package.py [--cache-dir DIR] [--user-agent UA] [--top-n 150]
+    python3 tools/build_sec_package.py --version 0.2.0 [--cache-dir DIR] [--user-agent UA]
 """
 from __future__ import annotations
 
@@ -20,12 +21,13 @@ import tempfile
 import urllib.error
 import urllib.request
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 URL = "https://www.sec.gov/files/dera/data/financial-statement-data-sets/{q}.zip"
 FIRST_QUARTER = "2026q3"
 ROOT = Path(__file__).resolve().parent.parent
-PKG = ROOT / "catalog" / "packages" / "sec-fin" / "0.1.0"
 
 SCHEMA = """\
 -- SEC EDGAR Financial Statement Data Sets (FSDS), one quarter, subset to the largest filers.
@@ -164,15 +166,18 @@ def rows(z: zipfile.ZipFile, name: str):
         yield from csv.DictReader(io.TextIOWrapper(raw, "utf-8", newline=""), delimiter="\t", quoting=csv.QUOTE_NONE)
 
 
-def build_db(z: zipfile.ZipFile, db: Path, top_n: int) -> dict:
-    subs = {r["adsh"]: r for r in rows(z, "sub.txt") if r["form"] in ("10-K", "10-Q")}
+def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
+    subs = {r["adsh"]: r for r in rows(z, "sub.txt") if r["form"] in v.forms}
     assets: dict[str, float] = {}
     for r in rows(z, "num.txt"):
         if (r["tag"] == "Assets" and r["adsh"] in subs and not r["segments"] and not r["coreg"] and r["qtrs"] == "0"
                 and r["uom"] == "USD" and r["value"] and r["version"].startswith("us-gaap/")):
             cik = subs[r["adsh"]]["cik"]
             assets[cik] = max(assets.get(cik, 0.0), float(r["value"]))
-    top = set(sorted(assets, key=lambda c: (-assets[c], int(c)))[:top_n])
+    ranked = sorted(assets, key=lambda c: (-assets[c], int(c)))
+    top = set(ranked[:v.top_n])
+    amenders = {r["cik"] for r in subs.values() if r["form"].endswith("/A")}
+    top |= set([c for c in ranked if c in amenders and c not in top][:v.amenders])
     subs = {a: r for a, r in subs.items() if r["cik"] in top}
     tags = {(r["tag"], r["version"]): r for r in rows(z, "tag.txt")}
     num = {}
@@ -186,20 +191,20 @@ def build_db(z: zipfile.ZipFile, db: Path, top_n: int) -> dict:
     con = sqlite3.connect(db)
     con.execute("PRAGMA page_size=4096")
     con.execute("PRAGMA journal_mode=OFF")
-    con.executescript(SCHEMA)
+    con.executescript(v.schema)
     con.executemany("INSERT INTO sub VALUES (?,?,?,?,?,?,?,?,?,?,?)", [
         (a, int(r["cik"]), r["name"], int(r["sic"] or 0), r["countryba"], r["form"], int(r["period"]),
          int(r["fy"] or 0), r["fp"], int(r["filed"]), int(r["prevrpt"] or 0)) for a, r in sorted(subs.items())])
     con.executemany("INSERT INTO num VALUES (?,?,?,?,?,?,?)", [(*k, v) for k, v in sorted(num.items())])
     con.executemany("INSERT INTO tag VALUES (?,?,?,?,?,?)", [
-        (t, v, tags[t, v]["datatype"], tags[t, v]["iord"], tags[t, v]["crdr"], int(tags[t, v]["abstract"]))
-        for t, v in used])
+        (t, ver, tags[t, ver]["datatype"], tags[t, ver]["iord"], tags[t, ver]["crdr"], int(tags[t, ver]["abstract"]))
+        for t, ver in used])
     con.commit()
     con.execute("VACUUM")
     con.close()
     defs: dict[str, dict] = {}
-    for t, v in used:   # sorted, so the highest taxonomy version of a tag wins
-        defs[t] = {"label": tags[t, v]["tlabel"], "doc": tags[t, v]["doc"]}
+    for t, ver in used:   # sorted, so the highest taxonomy version of a tag wins
+        defs[t] = {"label": tags[t, ver]["tlabel"], "doc": tags[t, ver]["doc"]}
     return defs
 
 
@@ -212,39 +217,73 @@ def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def write_tasks(con: sqlite3.Connection) -> None:
+def gold(con: sqlite3.Connection, t: dict):
+    """Run the gold SQL. A number is one row, one column; a single NULL row means the fact is absent (null)."""
+    rs = con.execute(t["sql"]).fetchall()
+    if rs == [(None,)] and t.get("nullable"):
+        return None
+    if t["format"] == "number":
+        assert len(rs) == 1 and len(rs[0]) == 1 and rs[0][0] is not None, f"{t['id']}: gold SQL must yield one number"
+        return rs[0][0]
+    got = [r[0] for r in rs]
+    assert got and len(set(got)) == len(got), f"{t['id']}: gold SQL must yield distinct names"
+    return got
+
+
+def write_tasks(con: sqlite3.Connection, pkg: Path, tasks: list[dict]) -> None:
     out = ['version = "1"', ""]
-    for t in TASKS:
-        rs = con.execute(t["sql"]).fetchall()
-        if t["format"] == "number":
-            assert len(rs) == 1 and len(rs[0]) == 1 and rs[0][0] is not None, f"{t['id']}: gold SQL must yield one number"
-            got = rs[0][0]
-        else:
-            got = [r[0] for r in rs]
-            assert got and len(set(got)) == len(got), f"{t['id']}: gold SQL must yield distinct names"
-        write_json(PKG / "data" / "in" / f"{t['id']}.json", {"answer_format": t["format"], "question": t["question"]})
-        write_json(PKG / "data" / "ref" / f"{t['id']}.json", {"answer": got, "answer_format": t["format"], "sql": t["sql"]})
+    for t in tasks:
+        ref = {"answer": gold(con, t), "answer_format": t["format"], "sql": t["sql"]}
+        if "tolerance" in t:
+            ref["tolerance"] = t["tolerance"]
+        write_json(pkg / "data" / "in" / f"{t['id']}.json", {"answer_format": t["format"], "question": t["question"]})
+        write_json(pkg / "data" / "ref" / f"{t['id']}.json", ref)
         tags = ["domain:finance", f"task:{t['task']}", f"difficulty:{t['difficulty']}"]
         out += ["[[task]]", f'task_id = "{t["id"]}"', f'group = "{t["group"]}"', 'tracks = ["semantic_task"]',
                 f"tags = {json.dumps(tags)}", f'split = "{t["split"]}"', 'disclosure = "public"',
                 f'difficulty = "{t["difficulty"]}"', 'consequence = "low"',
                 f'input_ref = "data/in/{t["id"]}.json"', f'reference_ref = "data/ref/{t["id"]}.json"',
-                'check = "checks/answer.py:check"', ""]
-    (PKG / "tasks.toml").write_text("\n".join(out), "utf-8")
+                'check = "checks/answer.py:check"']
+        out += [f"note = {json.dumps(t['note'])}", ""] if "note" in t else [""]
+    (pkg / "tasks.toml").write_text("\n".join(out), "utf-8")
 
 
-def write_package_toml(quarter: str, downloaded: str, top_n: int) -> None:
-    data = "\n".join(f'[[data]]\npath = "data/{n}"\nsha256 = "{sha(PKG / "data" / n)}"\n' for n in
-                     ("definitions.json", "fsds.sqlite", "schema.sql"))
-    lim = [
+def limitations_0_1_0(quarter: str) -> list[str]:
+    return [
         f"Thin vertical slice: {len(TASKS)} tasks, not the planned 100.",
         f"Single quarter of data ({quarter}); one filing season, so period coverage is narrow.",
-        f"Subset: the {top_n} filers with the largest reported Assets among 10-K and 10-Q filings; small filers are absent.",
+        "Subset: the 150 filers with the largest reported Assets among 10-K and 10-Q filings; small filers are absent.",
         "Only unsegmented facts with standard (non-custom) taxonomy tags are included; dimensional detail and company extensions are dropped.",
         "Tags subset: task:lookup, task:aggregation and task:concept_mapping only.",
         "analysis.min_groups is 2 for this slice; the full package targets min_groups 8.",
     ]
-    prov = f"SEC EDGAR Financial Statement Data Sets {quarter}, {URL.format(q=quarter)}, downloaded {downloaded}"
+
+
+@dataclass(frozen=True)
+class Version:
+    forms: tuple[str, ...]
+    top_n: int            # the largest filers by reported Assets
+    amenders: int         # plus this many of the largest remaining filers that filed a 10-K/A or 10-Q/A
+    schema: str
+    tasks: list[dict]
+    limitations: Callable[[str], list[str]]
+    provenance_note: str
+    min_groups: int
+
+
+def versions() -> dict[str, Version]:
+    import sec_fin_0_2_0 as v2
+    return {
+        "0.1.0": Version(("10-K", "10-Q"), 150, 0, SCHEMA, TASKS, limitations_0_1_0, "", 2),
+        "0.2.0": Version(v2.FORMS, v2.TOP_N, v2.AMENDERS, v2.SCHEMA, v2.TASKS, v2.limitations, v2.PROVENANCE_NOTE, 8),
+    }
+
+
+def write_package_toml(pkg: Path, v: Version, quarter: str, downloaded: str) -> None:
+    data = "\n".join(f'[[data]]\npath = "data/{n}"\nsha256 = "{sha(pkg / "data" / n)}"\n' for n in
+                     ("definitions.json", "fsds.sqlite", "schema.sql"))
+    lim = v.limitations(quarter)
+    prov = f"SEC EDGAR Financial Statement Data Sets {quarter}, {URL.format(q=quarter)}, downloaded {downloaded}{v.provenance_note}"
     budget = "max_usd = 5.0\nbuild_timeout_s = 300\ntask_timeout_s = 120\nmemory_mb = 2048\nmax_attempts = 2\n"
     text = f"""suite = "frozen_core"
 provenance = {json.dumps(prov)}
@@ -265,30 +304,33 @@ limitations = {json.dumps(lim, indent=2)}
 min_meaningful_diff = 0.05
 bootstrap_resamples = 2000
 seed = 7
-min_groups = 2
+min_groups = {v.min_groups}
 multiplicity = "holm"
 """
-    (PKG / "package.toml").write_text(text, "utf-8")
+    (pkg / "package.toml").write_text(text, "utf-8")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--version", required=True, choices=["0.1.0", "0.2.0"])
     ap.add_argument("--cache-dir", type=Path, default=Path(tempfile.gettempdir()) / "fsds-cache")
     ap.add_argument("--user-agent", default="observatory-benchmark-builder research@example.org")
-    ap.add_argument("--top-n", type=int, default=150)
+    ap.add_argument("--out", type=Path, help="package dir (default catalog/packages/sec-fin/<version>)")
     a = ap.parse_args()
+    v = versions()[a.version]
+    pkg = a.out or ROOT / "catalog" / "packages" / "sec-fin" / a.version
     zpath, quarter = fetch_zip(a.cache_dir, a.user_agent)
     downloaded = dt.datetime.fromtimestamp(zpath.stat().st_mtime, dt.timezone.utc).strftime("%Y-%m-%d")
-    (PKG / "data").mkdir(parents=True, exist_ok=True)
+    (pkg / "data").mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zpath) as z:
-        defs = build_db(z, PKG / "data" / "fsds.sqlite", a.top_n)
-    (PKG / "data" / "schema.sql").write_text(SCHEMA, "utf-8")
-    write_json(PKG / "data" / "definitions.json", defs)
-    con = sqlite3.connect(f"file:{PKG / 'data' / 'fsds.sqlite'}?mode=ro", uri=True)
-    write_tasks(con)
-    write_package_toml(quarter, downloaded, a.top_n)
+        defs = build_db(z, pkg / "data" / "fsds.sqlite", v)
+    (pkg / "data" / "schema.sql").write_text(v.schema, "utf-8")
+    write_json(pkg / "data" / "definitions.json", defs)
+    con = sqlite3.connect(f"file:{pkg / 'data' / 'fsds.sqlite'}?mode=ro", uri=True)
+    write_tasks(con, pkg, v.tasks)
+    write_package_toml(pkg, v, quarter, downloaded)
     for n in ("fsds.sqlite", "schema.sql", "definitions.json"):
-        print(f"{sha(PKG / 'data' / n)}  data/{n}")
+        print(f"{sha(pkg / 'data' / n)}  data/{n}")
 
 
 if __name__ == "__main__":
