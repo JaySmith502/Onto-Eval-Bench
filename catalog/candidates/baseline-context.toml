@@ -1,0 +1,8 @@
+name = "Business-context retrieval baseline (LLM text-to-SQL)"
+kind = "baseline"
+claim_source = "observatory-authored baseline"
+
+[claims]
+"task:lookup" = "supported"
+"task:aggregation" = "supported"
+"task:concept_mapping" = "supported"
