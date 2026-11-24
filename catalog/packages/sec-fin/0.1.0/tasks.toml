@@ -1,0 +1,157 @@
+version = "1"
+
+[[task]]
+task_id = "lookup_assets"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/lookup_assets.json"
+reference_ref = "data/ref/lookup_assets.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "lookup_goodwill"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:simple"]
+split = "heldout"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/lookup_goodwill.json"
+reference_ref = "data/ref/lookup_goodwill.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "lookup_tax"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/lookup_tax.json"
+reference_ref = "data/ref/lookup_tax.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "lookup_eps"
+group = "lookup"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:lookup", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/lookup_eps.json"
+reference_ref = "data/ref/lookup_eps.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "aggregate_count"
+group = "aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregation", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/aggregate_count.json"
+reference_ref = "data/ref/aggregate_count.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "aggregate_top5"
+group = "aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/aggregate_top5.json"
+reference_ref = "data/ref/aggregate_top5.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "aggregate_bank_sum"
+group = "aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregation", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/aggregate_bank_sum.json"
+reference_ref = "data/ref/aggregate_bank_sum.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "aggregate_loss"
+group = "aggregate"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:aggregation", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/aggregate_loss.json"
+reference_ref = "data/ref/aggregate_loss.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "definition_issued"
+group = "definition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:simple"]
+split = "config"
+disclosure = "public"
+difficulty = "simple"
+consequence = "low"
+input_ref = "data/in/definition_issued.json"
+reference_ref = "data/ref/definition_issued.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "definition_equity"
+group = "definition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/definition_equity.json"
+reference_ref = "data/ref/definition_equity.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "definition_cash"
+group = "definition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:moderate"]
+split = "heldout"
+disclosure = "public"
+difficulty = "moderate"
+consequence = "low"
+input_ref = "data/in/definition_cash.json"
+reference_ref = "data/ref/definition_cash.json"
+check = "checks/answer.py:check"
+
+[[task]]
+task_id = "definition_comprehensive"
+group = "definition"
+tracks = ["semantic_task"]
+tags = ["domain:finance", "task:concept_mapping", "difficulty:challenging"]
+split = "heldout"
+disclosure = "public"
+difficulty = "challenging"
+consequence = "low"
+input_ref = "data/in/definition_comprehensive.json"
+reference_ref = "data/ref/definition_comprehensive.json"
+check = "checks/answer.py:check"
