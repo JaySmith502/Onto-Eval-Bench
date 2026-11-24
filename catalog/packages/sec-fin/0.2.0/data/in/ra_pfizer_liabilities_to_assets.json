@@ -1,4 +1,4 @@
 {
  "answer_format": "number",
- "question": "What was the ratio of total liabilities to total assets of PFIZER INC on 2026-06-30, as reported in its 10-Q for the period ended 2026-06-30? Give it as a decimal rounded to 4 decimal places."
+ "question": "According to the filings in this database, what was the ratio of total liabilities to total assets of PFIZER INC on 2026-06-30, as reported in its 10-Q for the period ended 2026-06-30? Give it as a decimal rounded to 4 decimal places."
 }

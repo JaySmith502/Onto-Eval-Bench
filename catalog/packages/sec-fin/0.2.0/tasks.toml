@@ -586,7 +586,7 @@ consequence = "low"
 input_ref = "data/in/ar_net_income_top1.json"
 reference_ref = "data/ref/ar_net_income_top1.json"
 check = "checks/answer.py:check"
-note = "First (112.2B) leads second (62.6B) by a wide margin."
+note = "Parent net income is NetIncomeLoss, or ProfitLoss minus NetIncomeLossAttributableToNoncontrollingInterest for the 36 filers without a NetIncomeLoss fact (SPDR GOLD TRUST reports only ProfitLoss and has no noncontrolling interests). First (112.2B) leads second (62.6B) by a wide margin."
 
 [[task]]
 task_id = "ar_liabilities_top5"
@@ -614,7 +614,7 @@ consequence = "low"
 input_ref = "data/in/ar_coke_assets_rank.json"
 reference_ref = "data/ref/ar_coke_assets_rank.json"
 check = "checks/answer.py:check"
-note = "Rank = 1 + number of filers with strictly larger assets; no filer ties Coca-Cola."
+note = "Rank = 1 + number of filers with strictly larger assets; no filer ties Coca-Cola. Review fix: AEP TEXAS INC.'s copy of American Electric Power's filing is no longer in the subset, so AEP counts once (118 became 117)."
 
 [[task]]
 task_id = "ar_net_loss_bottom3"
@@ -628,7 +628,7 @@ consequence = "low"
 input_ref = "data/in/ar_net_loss_bottom3.json"
 reference_ref = "data/ref/ar_net_loss_bottom3.json"
 check = "checks/answer.py:check"
-note = "Third (-8.2B) and fourth (-5.5B) are far apart."
+note = "Parent net income is NetIncomeLoss, or ProfitLoss minus NetIncomeLossAttributableToNoncontrollingInterest for the 36 filers without a NetIncomeLoss fact (SPDR GOLD TRUST reports only ProfitLoss and has no noncontrolling interests). Review fix: NetIncomeLoss alone missed SPDR GOLD TRUST (-19.4B), the largest loss. Third (-10.5B) and fourth (-8.2B) are far apart."
 
 [[task]]
 task_id = "ar_10k_largest_assets"
@@ -698,7 +698,7 @@ consequence = "low"
 input_ref = "data/in/ar_assets_increase_top3.json"
 reference_ref = "data/ref/ar_assets_increase_top3.json"
 check = "checks/answer.py:check"
-note = "Third (318.4B) and fourth (277.6B) increases are far apart."
+note = "Third (318.4B) and fourth (277.6B) increases are far apart. Review fix: the question now says absolute dollars; the percentage change ranks other filers."
 
 [[task]]
 task_id = "as_electric_count"
@@ -712,7 +712,7 @@ consequence = "low"
 input_ref = "data/in/as_electric_count.json"
 reference_ref = "data/ref/as_electric_count.json"
 check = "checks/answer.py:check"
-note = "A plain count over sub."
+note = "A plain count over sub; AEP TEXAS INC.'s copy of American Electric Power's filing is not in the subset (15 became 14)."
 
 [[task]]
 task_id = "as_reit_filers"
@@ -768,7 +768,7 @@ consequence = "low"
 input_ref = "data/in/as_rail_net_income.json"
 reference_ref = "data/ref/as_rail_net_income.json"
 check = "checks/answer.py:check"
-note = "All four railroads report NetIncomeLoss at qtrs = 1."
+note = "Parent net income is NetIncomeLoss, or ProfitLoss minus NetIncomeLossAttributableToNoncontrollingInterest for the 36 filers without a NetIncomeLoss fact (SPDR GOLD TRUST reports only ProfitLoss and has no noncontrolling interests). All four railroads report NetIncomeLoss at qtrs = 1."
 
 [[task]]
 task_id = "as_oil_gas_names"
@@ -880,7 +880,7 @@ consequence = "low"
 input_ref = "data/in/cm_centene_total_revenue.json"
 reference_ref = "data/ref/cm_centene_total_revenue.json"
 check = "checks/answer.py:check"
-note = "Premiums are outside customer-contract revenue (44.4B); total Revenues (53.6B) includes them."
+note = "Centene reports two revenue facts: RevenueFromContractWithCustomerExcludingAssessedTax (44.4B) and total Revenues (53.6B). Review fix: the earlier note said premiums sit outside the 44.4B; per Centene's published statement that line covers premium and service revenue (not verifiable in the database), so the question now asks for the total of all revenue lines, which only Revenues is."
 
 [[task]]
 task_id = "cm_pfizer_taxes_paid"
@@ -1124,15 +1124,15 @@ note = "KKR reports no direct noncontrolling comprehensive income fact for the q
 task_id = "di_kkr_ni_parent"
 group = "disambiguation"
 tracks = ["semantic_task"]
-tags = ["domain:finance", "task:disambiguation", "difficulty:simple"]
+tags = ["domain:finance", "task:disambiguation", "difficulty:moderate"]
 split = "config"
 disclosure = "public"
-difficulty = "simple"
+difficulty = "moderate"
 consequence = "low"
 input_ref = "data/in/di_kkr_ni_parent.json"
 reference_ref = "data/ref/di_kkr_ni_parent.json"
 check = "checks/answer.py:check"
-note = "ProfitLoss (1.13B) includes noncontrolling interests; the parent's share is 700M."
+note = "ProfitLoss (1.13B) includes redeemable and nonredeemable noncontrolling interests; the parent's share is 700M. Review fix: 'before preferred stock dividends' rules out the 660M available to common stockholders."
 
 [[task]]
 task_id = "di_blackstone_total_equity"
@@ -1146,7 +1146,7 @@ consequence = "low"
 input_ref = "data/in/di_blackstone_total_equity.json"
 reference_ref = "data/ref/di_blackstone_total_equity.json"
 check = "checks/answer.py:check"
-note = "Parent equity is 9.0B; including noncontrolling interests it is 21.1B."
+note = "Parent equity is 9.0B; the total equity line is 21.1B. Review fix: the question now excludes the 1.37B of redeemable noncontrolling interests reported outside equity (21.1B + 1.37B = 22.4B is not the answer)."
 
 [[task]]
 task_id = "di_kkr_ci_parent"
@@ -1216,10 +1216,10 @@ consequence = "low"
 input_ref = "data/in/di_sharonai_eps_original.json"
 reference_ref = "data/ref/di_sharonai_eps_original.json"
 check = "checks/answer.py:check"
-note = "The original 10-Q value -2.41, superseded by the 10-Q/A's -0.27."
+note = "The original 10-Q value -2.41, superseded by the 10-Q/A's -0.27. Review fix: 'as originally reported' could mean the 2025 10-Q, which is not in the database; the question now names the filing."
 
 [[task]]
-task_id = "di_bloom_revenue_latest"
+task_id = "di_salesforce_ni_fq2"
 group = "disambiguation"
 tracks = ["semantic_task"]
 tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
@@ -1227,13 +1227,13 @@ split = "heldout"
 disclosure = "public"
 difficulty = "challenging"
 consequence = "low"
-input_ref = "data/in/di_bloom_revenue_latest.json"
-reference_ref = "data/ref/di_bloom_revenue_latest.json"
+input_ref = "data/in/di_salesforce_ni_fq2.json"
+reference_ref = "data/ref/di_salesforce_ni_fq2.json"
 check = "checks/answer.py:check"
-note = "The 10-Q and its next-day 10-Q/A both report the figure (same value); the rule picks the 10-Q/A."
+note = "Replaces di_bloom_revenue_latest, whose two filings agreed. The filing has fy = 2027, fp = Q2, period 2026-07-31; the fiscal quarter is qtrs = 1 (3.53B). Competing facts: six months (5.63B), fiscal Q1 2027 ended 2026-04-30 (2.11B), fiscal Q2 2026 ended 2025-07-31 (1.89B)."
 
 [[task]]
-task_id = "di_opko_net_loss_6m_latest"
+task_id = "di_broadcom_revenue_fytd"
 group = "disambiguation"
 tracks = ["semantic_task"]
 tags = ["domain:finance", "task:disambiguation", "difficulty:challenging"]
@@ -1241,10 +1241,10 @@ split = "heldout"
 disclosure = "public"
 difficulty = "challenging"
 consequence = "low"
-input_ref = "data/in/di_opko_net_loss_6m_latest.json"
-reference_ref = "data/ref/di_opko_net_loss_6m_latest.json"
+input_ref = "data/in/di_broadcom_revenue_fytd.json"
+reference_ref = "data/ref/di_broadcom_revenue_fytd.json"
 check = "checks/answer.py:check"
-note = "The 10-Q (2026-07-27) and 10-Q/A (2026-08-28) for 2026-06-30 agree; the Q1 10-Q/A has no six-month figure."
+note = "Replaces di_opko_net_loss_6m_latest, whose two filings agreed. The filing has fy = 2026, fp = Q3, period 2026-07-31; three fiscal quarters is qtrs = 3 (71.1B). Competing facts: the third quarter alone (29.6B) and the prior fiscal year's nine months (45.9B). Broadcom reports one revenue tag."
 
 [[task]]
 task_id = "di_disney_ni_total_ytd"
@@ -1261,7 +1261,7 @@ check = "checks/answer.py:check"
 note = "Fiscal year to date is qtrs = 3; including noncontrolling interests is ProfitLoss (7.79B), not NetIncomeLoss (7.29B)."
 
 [[task]]
-task_id = "un_starbucks_assets"
+task_id = "un_amazon_dividends"
 group = "unanswerable"
 tracks = ["semantic_task"]
 tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
@@ -1269,13 +1269,13 @@ split = "config"
 disclosure = "public"
 difficulty = "simple"
 consequence = "low"
-input_ref = "data/in/un_starbucks_assets.json"
-reference_ref = "data/ref/un_starbucks_assets.json"
+input_ref = "data/in/un_amazon_dividends.json"
+reference_ref = "data/ref/un_amazon_dividends.json"
 check = "checks/answer.py:check"
-note = "Starbucks is outside the subset (not among the largest filers); no sub row."
+note = "Amazon pays no dividends: its filing has no dividend tag of any kind, dimensional or custom included. Replaces un_starbucks_assets, which asked about a filer outside the subset."
 
 [[task]]
-task_id = "un_chipotle_revenue"
+task_id = "un_netflix_goodwill"
 group = "unanswerable"
 tracks = ["semantic_task"]
 tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
@@ -1283,13 +1283,13 @@ split = "heldout"
 disclosure = "public"
 difficulty = "simple"
 consequence = "low"
-input_ref = "data/in/un_chipotle_revenue.json"
-reference_ref = "data/ref/un_chipotle_revenue.json"
+input_ref = "data/in/un_netflix_goodwill.json"
+reference_ref = "data/ref/un_netflix_goodwill.json"
 check = "checks/answer.py:check"
-note = "Chipotle is outside the subset; no sub row."
+note = "Netflix's filing has no goodwill or intangible-asset tag of any kind. Replaces un_chipotle_revenue (filer outside the subset)."
 
 [[task]]
-task_id = "un_nike_assets"
+task_id = "un_walmart_rd"
 group = "unanswerable"
 tracks = ["semantic_task"]
 tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
@@ -1297,13 +1297,13 @@ split = "heldout"
 disclosure = "public"
 difficulty = "simple"
 consequence = "low"
-input_ref = "data/in/un_nike_assets.json"
-reference_ref = "data/ref/un_nike_assets.json"
+input_ref = "data/in/un_walmart_rd.json"
+reference_ref = "data/ref/un_walmart_rd.json"
 check = "checks/answer.py:check"
-note = "Nike is outside the subset; no sub row."
+note = "Walmart's filing has no research or development tag of any kind. Replaces un_nike_assets (filer outside the subset)."
 
 [[task]]
-task_id = "un_costco_net_income"
+task_id = "un_progressive_inventory"
 group = "unanswerable"
 tracks = ["semantic_task"]
 tags = ["domain:finance", "task:unanswerable", "difficulty:simple"]
@@ -1311,10 +1311,10 @@ split = "heldout"
 disclosure = "public"
 difficulty = "simple"
 consequence = "low"
-input_ref = "data/in/un_costco_net_income.json"
-reference_ref = "data/ref/un_costco_net_income.json"
+input_ref = "data/in/un_progressive_inventory.json"
+reference_ref = "data/ref/un_progressive_inventory.json"
 check = "checks/answer.py:check"
-note = "Costco has no filing in the database; no sub row."
+note = "Progressive, an insurer, has no inventory tag of any kind. Replaces un_costco_net_income (filer outside the subset)."
 
 [[task]]
 task_id = "un_jpm_gross_profit"

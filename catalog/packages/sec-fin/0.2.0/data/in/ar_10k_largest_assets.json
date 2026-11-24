@@ -1,4 +1,4 @@
 {
  "answer_format": "names",
- "question": "Among the annual reports in the database (form 10-K, not 10-K/A), which filer reported the largest total assets at the balance sheet date of its report? Answer with its company name."
+ "question": "According to the filings in this database, among the annual reports in the database (form 10-K, not 10-K/A), which filer reported the largest total assets at the balance sheet date of its report? Answer with its company name exactly as stored in sub.name."
 }

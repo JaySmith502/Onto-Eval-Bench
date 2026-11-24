@@ -15,6 +15,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -168,18 +169,31 @@ def rows(z: zipfile.ZipFile, name: str):
 
 def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
     subs = {r["adsh"]: r for r in rows(z, "sub.txt") if r["form"] in v.forms}
-    assets: dict[str, float] = {}
+    tags = {(r["tag"], r["version"]): r for r in rows(z, "tag.txt")}
+    filing_assets: dict[str, float] = {}
+    prints: dict[str, int] = {}
     for r in rows(z, "num.txt"):
-        if (r["tag"] == "Assets" and r["adsh"] in subs and not r["segments"] and not r["coreg"] and r["qtrs"] == "0"
-                and r["uom"] == "USD" and r["value"] and r["version"].startswith("us-gaap/")):
-            cik = subs[r["adsh"]]["cik"]
-            assets[cik] = max(assets.get(cik, 0.0), float(r["value"]))
+        if r["adsh"] not in subs or r["segments"] or r["coreg"] or not r["value"]:
+            continue
+        if (r["tag"] == "Assets" and r["qtrs"] == "0" and r["uom"] == "USD" and r["version"].startswith("us-gaap/")):
+            filing_assets[r["adsh"]] = max(filing_assets.get(r["adsh"], 0.0), float(r["value"]))
+        t = tags.get((r["tag"], r["version"]))
+        if v.drop_copied_filings and t and t["custom"] == "0":
+            key = "\t".join((r["tag"], r["version"], r["ddate"], r["qtrs"], r["uom"], r["value"])).encode()
+            prints[r["adsh"]] = (prints.get(r["adsh"], 0) + int.from_bytes(hashlib.blake2b(key, digest_size=16).digest())) % (1 << 128)
+    first: dict[int, str] = {}
+    for a in sorted(prints, key=lambda a: (subs[a]["accepted"], a)):   # earliest accepted filing of a fact set is kept
+        if subs[first.setdefault(prints[a], a)]["cik"] != subs[a]["cik"]:
+            del subs[a]
+    assets: dict[str, float] = {}
+    for a, x in filing_assets.items():
+        if a in subs:
+            assets[subs[a]["cik"]] = max(assets.get(subs[a]["cik"], 0.0), x)
     ranked = sorted(assets, key=lambda c: (-assets[c], int(c)))
     top = set(ranked[:v.top_n])
     amenders = {r["cik"] for r in subs.values() if r["form"].endswith("/A")}
     top |= set([c for c in ranked if c in amenders and c not in top][:v.amenders])
     subs = {a: r for a, r in subs.items() if r["cik"] in top}
-    tags = {(r["tag"], r["version"]): r for r in rows(z, "tag.txt")}
     num = {}
     for r in rows(z, "num.txt"):
         if r["adsh"] in subs and not r["segments"] and not r["coreg"] and r["value"]:
@@ -205,6 +219,30 @@ def build_db(z: zipfile.ZipFile, db: Path, v: "Version") -> dict:
     defs: dict[str, dict] = {}
     for t, ver in used:   # sorted, so the highest taxonomy version of a tag wins
         defs[t] = {"label": tags[t, ver]["tlabel"], "doc": tags[t, ver]["doc"]}
+    return standard_definitions(tags, used) if v.standard_labels else defs
+
+
+def standard_definitions(tags: dict, used: list[tuple[str, str]]) -> dict[str, dict]:
+    """Label and documentation from the newest standard release older than the newest one in the quarter.
+
+    FSDS fills tlabel (and for ifrs also doc) of a taxonomy's newest release in the quarter from a filer's own
+    label, for example us-gaap/2026 ProfitLoss "Net loss allocable to common shareholders ...". Older releases
+    carry the publisher's text. A tag that only the newest release has gets its doc and an empty label.
+    """
+    newest: dict[str, str] = {}
+    for _, ver in tags:
+        if "/" in ver:
+            tax, year = ver.split("/")
+            newest[tax] = max(newest.get(tax, ""), year)
+    defs: dict[str, dict] = {}
+    for t, ver in used:
+        tax = ver.split("/")[0]
+        older = [r for r in (f"{tax}/{y}" for y in range(int(newest[tax]) - 1, 2008, -1)) if (t, r) in tags]
+        if older:
+            r = tags[t, older[0]]
+            defs[t] = {"label": r["tlabel"], "doc": r["doc"]}
+        else:
+            defs[t] = {"label": "", "doc": tags[t, ver]["doc"]}
     return defs
 
 
@@ -218,9 +256,10 @@ def sha(p: Path) -> str:
 
 
 def gold(con: sqlite3.Connection, t: dict):
-    """Run the gold SQL. A number is one row, one column; a single NULL row means the fact is absent (null)."""
+    """Run the gold SQL. A number is one row, one column; an unanswerable task's SQL must yield the abstention row."""
     rs = con.execute(t["sql"]).fetchall()
-    if rs == [(None,)] and t.get("nullable"):
+    if t.get("nullable"):
+        assert rs == [("NOT_IN_DATABASE",)], f"{t['id']}: the fact must be absent"
         return None
     if t["format"] == "number":
         assert len(rs) == 1 and len(rs[0]) == 1 and rs[0][0] is not None, f"{t['id']}: gold SQL must yield one number"
@@ -231,6 +270,8 @@ def gold(con: sqlite3.Connection, t: dict):
 
 
 def write_tasks(con: sqlite3.Connection, pkg: Path, tasks: list[dict]) -> None:
+    for d in ("in", "ref"):   # a task dropped from the list leaves no stale files behind
+        shutil.rmtree(pkg / "data" / d, ignore_errors=True)
     out = ['version = "1"', ""]
     for t in tasks:
         ref = {"answer": gold(con, t), "answer_format": t["format"], "sql": t["sql"]}
@@ -269,13 +310,15 @@ class Version:
     limitations: Callable[[str], list[str]]
     provenance_note: str
     min_groups: int
+    drop_copied_filings: bool = False   # drop a filing whose kept facts copy another filer's filing (co-registrant)
+    standard_labels: bool = False       # definitions from publisher releases only (see standard_definitions)
 
 
 def versions() -> dict[str, Version]:
     import sec_fin_0_2_0 as v2
     return {
         "0.1.0": Version(("10-K", "10-Q"), 150, 0, SCHEMA, TASKS, limitations_0_1_0, "", 2),
-        "0.2.0": Version(v2.FORMS, v2.TOP_N, v2.AMENDERS, v2.SCHEMA, v2.TASKS, v2.limitations, v2.PROVENANCE_NOTE, 8),
+        "0.2.0": Version(v2.FORMS, v2.TOP_N, v2.AMENDERS, v2.SCHEMA, v2.TASKS, v2.limitations, v2.PROVENANCE_NOTE, 8, True, True),
     }
 
 

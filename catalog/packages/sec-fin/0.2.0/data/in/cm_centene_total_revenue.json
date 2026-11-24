@@ -1,4 +1,4 @@
 {
  "answer_format": "number",
- "question": "What were the total revenues, in US dollars, of CENTENE CORP for the three months ended 2026-06-30, including premium revenue, as reported in its 10-Q for the period ended 2026-06-30?"
+ "question": "According to the filings in this database, what were the total revenues (all revenue lines, including premium tax revenue), in US dollars, of CENTENE CORP for the three months ended 2026-06-30, as reported in its 10-Q for the period ended 2026-06-30?"
 }

@@ -14,6 +14,9 @@ PKG = Path(__file__).resolve().parents[1] / "catalog" / "packages" / "sec-fin" /
 _spec = importlib.util.spec_from_file_location("sec_fin_020_answer", PKG / "checks" / "answer.py")
 answer = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(answer)
+_spec = importlib.util.spec_from_file_location("llm_sql", PKG.parents[3] / "adapters" / "llm_sql.py")
+llm_sql = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(llm_sql)
 
 
 def score(ref, got):
@@ -80,6 +83,14 @@ class ShippedReferences(unittest.TestCase):
             with self.subTest(t["task_id"]):
                 self.assertEqual(score(ref, ref["answer"]), 1.0)
                 self.assertEqual(score(ref, perturb(ref)), 0.0)
+
+    def test_every_gold_query_scores_through_the_adapter(self):
+        """The adapter's own result conversion, so unanswerable gold SQL must abstain the way a candidate does."""
+        for t in tomllib.loads((PKG / "tasks.toml").read_text())["task"]:
+            ref = json.loads((PKG / t["reference_ref"]).read_text())
+            with self.subTest(t["task_id"]):
+                got = llm_sql.execute(PKG / "data" / "fsds.sqlite", ref["sql"], ref["answer_format"])
+                self.assertEqual(score(ref, got), 1.0)
 
 
 if __name__ == "__main__":

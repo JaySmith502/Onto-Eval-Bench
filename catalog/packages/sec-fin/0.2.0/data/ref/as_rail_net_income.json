@@ -1,5 +1,5 @@
 {
  "answer": 5287000000.0,
  "answer_format": "number",
- "sql": "SELECT SUM(n.value) FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period = 20260630 AND n.ddate = 20260630 AND n.uom = 'USD' AND s.sic = 4011 AND n.tag = 'NetIncomeLoss' AND n.qtrs = 1"
+ "sql": "WITH ni AS (SELECT s.name, s.sic, COALESCE((SELECT value FROM num WHERE adsh = s.adsh AND tag = 'NetIncomeLoss' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD'), (SELECT value FROM num WHERE adsh = s.adsh AND tag = 'ProfitLoss' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD') - COALESCE((SELECT value FROM num WHERE adsh = s.adsh AND tag = 'NetIncomeLossAttributableToNoncontrollingInterest' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD'), 0)) AS v FROM sub s WHERE s.form = '10-Q' AND s.period = 20260630) SELECT SUM(v) FROM ni WHERE sic = 4011"
 }

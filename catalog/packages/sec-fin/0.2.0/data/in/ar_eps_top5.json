@@ -1,4 +1,4 @@
 {
  "answer_format": "names",
- "question": "Among original 10-Q filings (form 10-Q, not 10-Q/A) with a period ending 2026-06-30 that reported a diluted earnings per share figure for the three months ended 2026-06-30, which five reported the highest diluted earnings per share? Answer with their company names."
+ "question": "According to the filings in this database, among original 10-Q filings (form 10-Q, not 10-Q/A) with a period ending 2026-06-30 that reported a diluted earnings per share figure for the three months ended 2026-06-30, which five reported the highest diluted earnings per share? Answer with their company names exactly as stored in sub.name."
 }

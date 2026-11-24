@@ -13,7 +13,8 @@ CREATE TABLE sub (
   fy INTEGER,             -- fiscal year focus as reported by the filer (may differ from the calendar year)
   fp TEXT,                -- fiscal period focus: FY, Q1, Q2, Q3
   filed INTEGER,          -- filing date, YYYYMMDD
-  prevrpt INTEGER         -- 1 if this filing was subsequently amended or replaced within the quarter, else 0
+  prevrpt INTEGER         -- always 0 in this database (the source flags no filing as amended); find amendments by
+                          -- form (10-K/A, 10-Q/A) and the most recent filing by filed
 );
 
 -- One row per reported numeric fact. Only facts with no dimensional qualifier (no segments,
@@ -26,7 +27,8 @@ CREATE TABLE num (
   version TEXT,           -- taxonomy version, for example us-gaap/2025
   ddate INTEGER,          -- end date of the fact's period, YYYYMMDD (the instant for balance sheet items)
   qtrs INTEGER,           -- duration in quarters rounded: 0 for an instant (point in time), 1, 2, 3, 4 for durations
-  uom TEXT,               -- unit of measure, for example USD, shares, USD/shares
+  uom TEXT,               -- unit of measure: USD (also for per-share amounts such as earnings per share), shares,
+                          -- pure (ratios), EUR
   value REAL,             -- reported value in uom (full units, not thousands or millions)
   PRIMARY KEY (adsh, tag, version, ddate, qtrs, uom)
 );

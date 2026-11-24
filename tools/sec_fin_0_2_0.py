@@ -4,7 +4,7 @@ FORMS = ("10-K", "10-Q", "10-K/A", "10-Q/A")
 TOP_N = 300
 AMENDERS = 10
 PROVENANCE_NOTE = (f"; subset: the {TOP_N} filers with the largest reported Assets plus the {AMENDERS} largest other filers "
-                   "that filed a 10-K/A or 10-Q/A in the quarter")
+                   "that filed a 10-K/A or 10-Q/A in the quarter, without co-registrant copies of another filer's filing")
 
 SCHEMA = """\
 -- SEC EDGAR Financial Statement Data Sets (FSDS), one quarter, subset to the largest filers.
@@ -22,7 +22,8 @@ CREATE TABLE sub (
   fy INTEGER,             -- fiscal year focus as reported by the filer (may differ from the calendar year)
   fp TEXT,                -- fiscal period focus: FY, Q1, Q2, Q3
   filed INTEGER,          -- filing date, YYYYMMDD
-  prevrpt INTEGER         -- 1 if this filing was subsequently amended or replaced within the quarter, else 0
+  prevrpt INTEGER         -- always 0 in this database (the source flags no filing as amended); find amendments by
+                          -- form (10-K/A, 10-Q/A) and the most recent filing by filed
 );
 
 -- One row per reported numeric fact. Only facts with no dimensional qualifier (no segments,
@@ -35,7 +36,8 @@ CREATE TABLE num (
   version TEXT,           -- taxonomy version, for example us-gaap/2025
   ddate INTEGER,          -- end date of the fact's period, YYYYMMDD (the instant for balance sheet items)
   qtrs INTEGER,           -- duration in quarters rounded: 0 for an instant (point in time), 1, 2, 3, 4 for durations
-  uom TEXT,               -- unit of measure, for example USD, shares, USD/shares
+  uom TEXT,               -- unit of measure: USD (also for per-share amounts such as earnings per share), shares,
+                          -- pure (ratios), EUR
   value REAL,             -- reported value in uom (full units, not thousands or millions)
   PRIMARY KEY (adsh, tag, version, ddate, qtrs, uom)
 );
@@ -80,12 +82,28 @@ def ratio(num: str, den: str, places: int = 4) -> str:
 
 
 def task(id, group, difficulty, split, question, sql, note, fmt="number", **extra) -> dict:
+    """Every question is scoped to the database, so the unanswerable ones carry no wording of their own."""
+    question = f"According to the filings in this database, {question[0].lower()}{question[1:]}"
     return dict(id=id, group=group, task=group, difficulty=difficulty, split=split, question=question, format=fmt,
                 sql=sql, note=note, **extra)
 
 
+ABSTAIN = "NOT_IN_DATABASE"   # adapters/llm_sql.py: the one result that means "the database does not contain this fact"
+
+
 def absent(id, difficulty, split, question, sql, note) -> dict:
-    return task(id, "unanswerable", difficulty, split, question, f"SELECT ({sql})", note, nullable=True)
+    return task(id, "unanswerable", difficulty, split, question, f"SELECT '{ABSTAIN}' WHERE NOT EXISTS ({sql})", note,
+                nullable=True)
+
+
+NI = ("WITH ni AS (SELECT s.name, s.sic, COALESCE((SELECT value FROM num WHERE adsh = s.adsh AND tag = 'NetIncomeLoss' "
+      "AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD'), (SELECT value FROM num WHERE adsh = s.adsh AND tag = 'ProfitLoss' "
+      "AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD') - COALESCE((SELECT value FROM num WHERE adsh = s.adsh "
+      "AND tag = 'NetIncomeLossAttributableToNoncontrollingInterest' AND ddate = 20260630 AND qtrs = 1 AND uom = 'USD'), 0)) "
+      "AS v FROM sub s WHERE s.form = '10-Q' AND s.period = 20260630) ")
+NI_NOTE = ("Parent net income is NetIncomeLoss, or ProfitLoss minus NetIncomeLossAttributableToNoncontrollingInterest for "
+           "the 36 filers without a NetIncomeLoss fact (SPDR GOLD TRUST reports only ProfitLoss and has no noncontrolling "
+           "interests). ")
 
 
 Q10 = "original 10-Q filings (form 10-Q, not 10-Q/A) with a period ending 2026-06-30"
@@ -295,31 +313,33 @@ TASKS: list[dict] = [
 
     # 5. aggregate_rank: ordering across filers.
     task("ar_goodwill_top3", "aggregate_rank", "simple", "config",
-         f"Among {Q10}, which three filers reported the largest goodwill on 2026-06-30? Answer with their company names.",
+         f"Among {Q10}, which three filers reported the largest goodwill on 2026-06-30? Answer with their company names exactly as stored in sub.name.",
          f"SELECT s.name {TOP}n.tag = 'Goodwill' AND n.qtrs = 0 ORDER BY n.value DESC LIMIT 3",
          "Third (83.2B) and fourth (74.7B) are far apart.", fmt="names"),
     task("ar_net_income_top1", "aggregate_rank", "simple", "heldout",
          f"Among {Q10}, which filer reported the largest net income attributable to the company (excluding noncontrolling "
-         "interests) for the three months ended 2026-06-30? Answer with its company name.",
-         f"SELECT s.name {TOP}n.tag = 'NetIncomeLoss' AND n.qtrs = 1 ORDER BY n.value DESC LIMIT 1",
-         "First (112.2B) leads second (62.6B) by a wide margin.", fmt="names"),
+         "interests) for the three months ended 2026-06-30? Answer with its company name exactly as stored in sub.name.",
+         f"{NI}SELECT name FROM ni WHERE v IS NOT NULL ORDER BY v DESC LIMIT 1",
+         NI_NOTE + "First (112.2B) leads second (62.6B) by a wide margin.", fmt="names"),
     task("ar_liabilities_top5", "aggregate_rank", "simple", "heldout",
-         f"Among {Q10}, which five filers reported the largest total liabilities on 2026-06-30? Answer with their company names.",
+         f"Among {Q10}, which five filers reported the largest total liabilities on 2026-06-30? Answer with their company names exactly as stored in sub.name.",
          f"SELECT s.name {TOP}n.tag = 'Liabilities' AND n.qtrs = 0 ORDER BY n.value DESC LIMIT 5",
          "Fifth (2.68T) and sixth (2.10T) are far apart.", fmt="names"),
     task("ar_coke_assets_rank", "aggregate_rank", "moderate", "heldout",
          f"Among {Q10} that reported total assets on 2026-06-30, what was the rank of COCA COLA CO by total assets on that date, "
          "where rank 1 is the largest?",
          f"SELECT 1 + COUNT(*) {TOP}n.tag = 'Assets' AND n.qtrs = 0 AND n.value > {v('COCA COLA CO', 'Assets')}",
-         "Rank = 1 + number of filers with strictly larger assets; no filer ties Coca-Cola."),
+         "Rank = 1 + number of filers with strictly larger assets; no filer ties Coca-Cola. Review fix: AEP TEXAS INC.'s "
+         "copy of American Electric Power's filing is no longer in the subset, so AEP counts once (118 became 117)."),
     task("ar_net_loss_bottom3", "aggregate_rank", "moderate", "heldout",
          f"Among {Q10}, which three filers reported the largest net losses attributable to the company (the most negative net "
-         "income, excluding noncontrolling interests) for the three months ended 2026-06-30? Answer with their company names.",
-         f"SELECT s.name {TOP}n.tag = 'NetIncomeLoss' AND n.qtrs = 1 ORDER BY n.value ASC LIMIT 3",
-         "Third (-8.2B) and fourth (-5.5B) are far apart.", fmt="names"),
+         "income, excluding noncontrolling interests) for the three months ended 2026-06-30? Answer with their company names exactly as stored in sub.name.",
+         f"{NI}SELECT name FROM ni WHERE v IS NOT NULL ORDER BY v ASC LIMIT 3",
+         NI_NOTE + "Review fix: NetIncomeLoss alone missed SPDR GOLD TRUST (-19.4B), the largest loss. Third (-10.5B) "
+         "and fourth (-8.2B) are far apart.", fmt="names"),
     task("ar_10k_largest_assets", "aggregate_rank", "moderate", "heldout",
          "Among the annual reports in the database (form 10-K, not 10-K/A), which filer reported the largest total assets at "
-         "the balance sheet date of its report? Answer with its company name.",
+         "the balance sheet date of its report? Answer with its company name exactly as stored in sub.name.",
          "SELECT s.name FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-K' AND n.tag = 'Assets' AND n.qtrs = 0 "
          "AND n.ddate = s.period AND n.uom = 'USD' ORDER BY n.value DESC LIMIT 1",
          "Seven 10-K filers; the first (758B) is far ahead of the second (130B).", fmt="names"),
@@ -329,27 +349,29 @@ TASKS: list[dict] = [
          "No filer sits near the 1T threshold."),
     task("ar_eps_top5", "aggregate_rank", "challenging", "heldout",
          f"Among {Q10} that reported a diluted earnings per share figure for the three months ended 2026-06-30, which five "
-         "reported the highest diluted earnings per share? Answer with their company names.",
+         "reported the highest diluted earnings per share? Answer with their company names exactly as stored in sub.name.",
          f"SELECT s.name {TOP}n.tag = 'EarningsPerShareDiluted' AND n.qtrs = 1 ORDER BY n.value DESC LIMIT 5",
          "Fifth 17.83 versus sixth 17.73: distinct values, no tie.", fmt="names"),
     task("ar_offcycle_assets_top3", "aggregate_rank", "challenging", "heldout",
          "Among original 10-Q filings (form 10-Q) whose balance sheet date is not 2026-06-30, which three filers reported the "
-         "largest total assets at their own balance sheet date? Answer with their company names.",
+         "largest total assets at their own balance sheet date? Answer with their company names exactly as stored in sub.name.",
          "SELECT s.name FROM sub s JOIN num n ON n.adsh = s.adsh WHERE s.form = '10-Q' AND s.period <> 20260630 "
          "AND n.tag = 'Assets' AND n.qtrs = 0 AND n.ddate = s.period AND n.uom = 'USD' ORDER BY n.value DESC LIMIT 3",
          "Balance sheet date = sub.period; third (293.9B) and fourth (188.1B) are far apart.", fmt="names"),
     task("ar_assets_increase_top3", "aggregate_rank", "challenging", "heldout",
          f"Among {Q10} that reported total assets at both 2025-12-31 and 2026-06-30, which three had the largest increase in "
-         "total assets between those dates? Answer with their company names.",
+         "total assets in US dollars (the absolute change, not the percentage change) between those dates? Answer with their company names exactly as stored in sub.name.",
          "SELECT s.name FROM sub s JOIN num a ON a.adsh = s.adsh AND a.tag = 'Assets' AND a.ddate = 20260630 AND a.qtrs = 0 "
          "JOIN num b ON b.adsh = s.adsh AND b.tag = 'Assets' AND b.ddate = 20251231 AND b.qtrs = 0 "
          "WHERE s.form = '10-Q' AND s.period = 20260630 ORDER BY a.value - b.value DESC LIMIT 3",
-         "Third (318.4B) and fourth (277.6B) increases are far apart.", fmt="names"),
+         "Third (318.4B) and fourth (277.6B) increases are far apart. Review fix: the question now says absolute dollars; "
+         "the percentage change ranks other filers.", fmt="names"),
 
     # 6. aggregate_sector: SIC-filtered counts, sums, averages.
     task("as_electric_count", "aggregate_sector", "simple", "config",
          f"How many {Q10} were made by filers with SIC code 4911 (electric services)?",
-         "SELECT COUNT(*) FROM sub WHERE sic = 4911 AND form = '10-Q' AND period = 20260630", "A plain count over sub."),
+         "SELECT COUNT(*) FROM sub WHERE sic = 4911 AND form = '10-Q' AND period = 20260630",
+         "A plain count over sub; AEP TEXAS INC.'s copy of American Electric Power's filing is not in the subset (15 became 14)."),
     task("as_reit_filers", "aggregate_sector", "simple", "heldout",
          "How many distinct filers with SIC code 6798 (real estate investment trusts) have at least one filing of any form in "
          "the database?",
@@ -367,10 +389,10 @@ TASKS: list[dict] = [
     task("as_rail_net_income", "aggregate_sector", "moderate", "heldout",
          f"What was the combined net income attributable to the companies (excluding noncontrolling interests), in US dollars, "
          f"for the three months ended 2026-06-30 of all filers with SIC code 4011 (railroads, line-haul operating) among {Q10}?",
-         f"SELECT SUM(n.value) {TOP}s.sic = 4011 AND n.tag = 'NetIncomeLoss' AND n.qtrs = 1",
-         "All four railroads report NetIncomeLoss at qtrs = 1."),
+         f"{NI}SELECT SUM(v) FROM ni WHERE sic = 4011",
+         NI_NOTE + "All four railroads report NetIncomeLoss at qtrs = 1."),
     task("as_oil_gas_names", "aggregate_sector", "moderate", "heldout",
-         f"Which filers with SIC code 1311 (crude petroleum and natural gas) made {Q10}? Answer with their company names.",
+         f"Which filers with SIC code 1311 (crude petroleum and natural gas) made {Q10}? Answer with their company names exactly as stored in sub.name.",
          "SELECT name FROM sub WHERE sic = 1311 AND form = '10-Q' AND period = 20260630",
          "BKV's 10-K/A is excluded by the form rule; its 10-Q is included.", fmt="names"),
     task("as_big_national_banks", "aggregate_sector", "moderate", "heldout",
@@ -408,10 +430,13 @@ TASKS: list[dict] = [
          fact("GENERAL MOTORS CO", "RevenueFromContractWithCustomerExcludingAssessedTax", P, 1),
          "GM also reports total Revenues and revenue not from contracts with customers; one tag is customer-contract revenue."),
     task("cm_centene_total_revenue", "concept_mapping", "moderate", "heldout",
-         f"What were the total revenues, in US dollars, of CENTENE CORP for the three months ended 2026-06-30, including premium "
-         f"revenue, {src()}?",
+         f"What were the total revenues (all revenue lines, including premium tax revenue), in US dollars, of CENTENE CORP for "
+         f"the three months ended 2026-06-30, {src()}?",
          fact("CENTENE CORP", "Revenues", P, 1),
-         "Premiums are outside customer-contract revenue (44.4B); total Revenues (53.6B) includes them."),
+         "Centene reports two revenue facts: RevenueFromContractWithCustomerExcludingAssessedTax (44.4B) and total Revenues "
+         "(53.6B). Review fix: the earlier note said premiums sit outside the 44.4B; per Centene's published statement that "
+         "line covers premium and service revenue (not verifiable in the database), so the question now asks for the total "
+         "of all revenue lines, which only Revenues is."),
     task("cm_pfizer_taxes_paid", "concept_mapping", "moderate", "heldout",
          f"How much cash did PFIZER INC pay for income taxes, net of refunds, in US dollars, during the six months ended "
          f"2026-06-30, {src()}?",
@@ -512,16 +537,19 @@ TASKS: list[dict] = [
          "KKR reports no direct noncontrolling comprehensive income fact for the quarter, so the difference is the only route."),
 
     # 9. disambiguation: competing facts; the question states the rule that picks one.
-    task("di_kkr_ni_parent", "disambiguation", "simple", "config",
-         f"What was the net income attributable to KKR & CO. INC. (excluding noncontrolling interests), in US dollars, for the "
-         f"three months ended 2026-06-30, {src()}?",
+    task("di_kkr_ni_parent", "disambiguation", "moderate", "config",
+         f"What was the net income attributable to KKR & CO. INC. (excluding noncontrolling interests), before preferred stock "
+         f"dividends, in US dollars, for the three months ended 2026-06-30, {src()}?",
          fact("KKR & CO. INC.", "NetIncomeLoss", P, 1),
-         "ProfitLoss (1.13B) includes noncontrolling interests; the parent's share is 700M."),
+         "ProfitLoss (1.13B) includes redeemable and nonredeemable noncontrolling interests; the parent's share is 700M. "
+         "Review fix: 'before preferred stock dividends' rules out the 660M available to common stockholders."),
     task("di_blackstone_total_equity", "disambiguation", "moderate", "heldout",
-         f"What was the total equity of BLACKSTONE INC., in US dollars, on 2026-06-30, including the noncontrolling interests' "
-         f"share, {src()}?",
+         f"What was the total equity of BLACKSTONE INC., in US dollars, on 2026-06-30 as shown on the balance sheet's total "
+         f"equity line, which includes non-redeemable noncontrolling interests and excludes redeemable noncontrolling "
+         f"interests, {src()}?",
          fact("BLACKSTONE INC.", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"),
-         "Parent equity is 9.0B; including noncontrolling interests it is 21.1B."),
+         "Parent equity is 9.0B; the total equity line is 21.1B. Review fix: the question now excludes the 1.37B of "
+         "redeemable noncontrolling interests reported outside equity (21.1B + 1.37B = 22.4B is not the answer)."),
     task("di_kkr_ci_parent", "disambiguation", "moderate", "heldout",
          f"What was the comprehensive income attributable to KKR & CO. INC. (excluding noncontrolling interests), in US dollars, "
          f"for the three months ended 2026-06-30, {src()}?",
@@ -544,19 +572,24 @@ TASKS: list[dict] = [
          "The 10-Q (filed 2026-08-06) says -2.41; the 10-Q/A (filed 2026-08-11) restates it to -0.27."),
     task("di_sharonai_eps_original", "disambiguation", "challenging", "heldout",
          "What was the diluted earnings per share, in US dollars per share, of SHARONAI HOLDINGS INC. for the three months ended "
-         "2025-06-30, as originally reported, before any amendment?",
+         "2025-06-30, as reported in its original 10-Q (form 10-Q, not 10-Q/A) for the period ended 2026-06-30?",
          fact("SHARONAI HOLDINGS INC.", "EarningsPerShareDiluted", 20250630, 1),
-         "The original 10-Q value -2.41, superseded by the 10-Q/A's -0.27."),
-    task("di_bloom_revenue_latest", "disambiguation", "challenging", "heldout",
-         "What were the revenues, in US dollars, of BLOOM ENERGY CORP for the three months ended 2026-06-30? Use the most "
-         "recently filed report that contains this figure.",
-         fact("BLOOM ENERGY CORP", "Revenues", P, 1, form="10-Q/A"),
-         "The 10-Q and its next-day 10-Q/A both report the figure (same value); the rule picks the 10-Q/A."),
-    task("di_opko_net_loss_6m_latest", "disambiguation", "challenging", "heldout",
-         "What was the net loss, in US dollars, of OPKO HEALTH, INC. for the six months ended 2026-06-30? Use the most recently "
-         "filed report that contains this figure, and give a loss as a negative number.",
-         fact("OPKO HEALTH, INC.", "NetIncomeLoss", P, 2, form="10-Q/A"),
-         "The 10-Q (2026-07-27) and 10-Q/A (2026-08-28) for 2026-06-30 agree; the Q1 10-Q/A has no six-month figure."),
+         "The original 10-Q value -2.41, superseded by the 10-Q/A's -0.27. Review fix: 'as originally reported' could mean "
+         "the 2025 10-Q, which is not in the database; the question now names the filing."),
+    task("di_salesforce_ni_fq2", "disambiguation", "challenging", "heldout",
+         "What was the net income, in US dollars, of SALESFORCE, INC. for the second quarter of its fiscal year 2027, as "
+         "reported in its 10-Q for that quarter?",
+         fact("SALESFORCE, INC.", "NetIncomeLoss", 20260731, 1, period=20260731),
+         "Replaces di_bloom_revenue_latest, whose two filings agreed. The filing has fy = 2027, fp = Q2, period 2026-07-31; "
+         "the fiscal quarter is qtrs = 1 (3.53B). Competing facts: six months (5.63B), fiscal Q1 2027 ended 2026-04-30 "
+         "(2.11B), fiscal Q2 2026 ended 2025-07-31 (1.89B)."),
+    task("di_broadcom_revenue_fytd", "disambiguation", "challenging", "heldout",
+         "What was the revenue, in US dollars, of BROADCOM INC. for the first three quarters of its fiscal year 2026 combined, "
+         "as reported in its 10-Q for its fiscal third quarter of 2026?",
+         fact("BROADCOM INC.", "RevenueFromContractWithCustomerExcludingAssessedTax", 20260731, 3, period=20260731),
+         "Replaces di_opko_net_loss_6m_latest, whose two filings agreed. The filing has fy = 2026, fp = Q3, period "
+         "2026-07-31; three fiscal quarters is qtrs = 3 (71.1B). Competing facts: the third quarter alone (29.6B) and the "
+         "prior fiscal year's nine months (45.9B). Broadcom reports one revenue tag."),
     task("di_disney_ni_total_ytd", "disambiguation", "challenging", "heldout",
          f"What was the net income of WALT DISNEY CO, in US dollars, for its fiscal year to date through 2026-06-30, including "
          f"the share attributable to noncontrolling interests, {src()}?",
@@ -564,18 +597,27 @@ TASKS: list[dict] = [
          "Fiscal year to date is qtrs = 3; including noncontrolling interests is ProfitLoss (7.79B), not NetIncomeLoss (7.29B)."),
 
     # 10. unanswerable: the database does not contain the fact; the reference is null.
-    absent("un_starbucks_assets", "simple", "config",
-           f"What were the total assets, in US dollars, of STARBUCKS CORP on 2026-06-30, {src()}?",
-           fact("STARBUCKS CORP", "Assets"), "Starbucks is outside the subset (not among the largest filers); no sub row."),
-    absent("un_chipotle_revenue", "simple", "heldout",
-           f"What were the revenues, in US dollars, of CHIPOTLE MEXICAN GRILL INC for the three months ended 2026-06-30, {src()}?",
-           fact("CHIPOTLE MEXICAN GRILL INC", "Revenues", P, 1), "Chipotle is outside the subset; no sub row."),
-    absent("un_nike_assets", "simple", "heldout",
-           f"What were the total assets, in US dollars, of NIKE, INC. on 2026-05-31, {src('10-K', 20260531)}?",
-           fact("NIKE, INC.", "Assets", 20260531, form="10-K", period=20260531), "Nike is outside the subset; no sub row."),
-    absent("un_costco_net_income", "simple", "heldout",
-           f"What was the net income, in US dollars, of COSTCO WHOLESALE CORP for the three months ended 2026-06-30, {src()}?",
-           fact("COSTCO WHOLESALE CORP", "NetIncomeLoss", P, 1), "Costco has no filing in the database; no sub row."),
+    absent("un_amazon_dividends", "simple", "config",
+           f"How much cash, in US dollars, did AMAZON COM INC pay in dividends during the six months ended 2026-06-30, {src()}?",
+           fact("AMAZON COM INC", "PaymentsOfDividends", P, 2),
+           "Amazon pays no dividends: its filing has no dividend tag of any kind, dimensional or custom included. "
+           "Replaces un_starbucks_assets, which asked about a filer outside the subset."),
+    absent("un_netflix_goodwill", "simple", "heldout",
+           f"What was the goodwill, in US dollars, of NETFLIX INC on 2026-06-30, {src()}?",
+           fact("NETFLIX INC", "Goodwill"),
+           "Netflix's filing has no goodwill or intangible-asset tag of any kind. Replaces un_chipotle_revenue (filer outside "
+           "the subset)."),
+    absent("un_walmart_rd", "simple", "heldout",
+           f"What was the research and development expense, in US dollars, of WALMART INC. for the three months ended "
+           f"2026-07-31, {src(period=20260731)}?",
+           fact("WALMART INC.", "ResearchAndDevelopmentExpense", 20260731, 1, period=20260731),
+           "Walmart's filing has no research or development tag of any kind. Replaces un_nike_assets (filer outside the "
+           "subset)."),
+    absent("un_progressive_inventory", "simple", "heldout",
+           f"What were the inventories, in US dollars, of PROGRESSIVE CORP/OH/ on 2026-06-30, {src()}?",
+           fact("PROGRESSIVE CORP/OH/", "InventoryNet"),
+           "Progressive, an insurer, has no inventory tag of any kind. Replaces un_costco_net_income (filer outside the "
+           "subset)."),
     absent("un_jpm_gross_profit", "moderate", "heldout",
            f"What was the gross profit, in US dollars, of JPMORGAN CHASE & CO for the three months ended 2026-06-30, {src()}?",
            fact("JPMORGAN CHASE & CO", "GrossProfit", P, 1), "Banks do not report gross profit; JPMorgan has no GrossProfit fact."),
@@ -609,11 +651,22 @@ def limitations(quarter: str) -> list[str]:
         f"{AMENDERS} largest other filers that filed a 10-K/A or 10-Q/A; small filers are absent.",
         "Only unsegmented facts with standard (non-custom) taxonomy tags are included; dimensional detail and company "
         "extensions are dropped.",
-        "Amendments in the quarter mostly repeat the original values; one filer restates figures, so the amendment rule is "
-        "tested mostly through duplicate facts, not conflicting ones.",
+        "Amendments in the quarter mostly repeat the original values; only SHARONAI HOLDINGS INC. restates figures, so "
+        "the other disambiguation tasks turn on period, fiscal calendar or parent-versus-total rules.",
+        "A filing whose kept facts are identical to an earlier-accepted filing by another filer (a co-registrant copy) is "
+        "left out; in this quarter that drops AEP TEXAS INC.'s copy of American Electric Power's 10-Q.",
+        "Definitions carry the publisher's US-GAAP label and documentation from the newest release older than the "
+        "quarter's newest (us-gaap/2025), because FSDS fills the newest release's labels from filers; tags that only "
+        "us-gaap/2026 has keep its documentation and an empty label.",
+        "Some filers put the same concept under different tags (Revenues or RevenueFromContractWithCustomerExcludingAssessed"
+        "Tax, DebtCurrent or LongTermDebtCurrent); the question does not say which, so a method that cannot inspect the "
+        "data must guess or combine tags.",
+        "Tasks are not fully independent: APPLE INC appears in 15 tasks, and a few tasks share a sub-fact (for example "
+        "cc_exxon_fcf is the first part of cc_exxon_fcf_after_dividends).",
         "sub.prevrpt is 0 for every filing in this quarter (the source flags no filing as superseded), so the most recent "
         "filing must be found from sub.filed.",
         "Ratio and growth answers are rounded to 4 decimal places and accepted within an absolute 0.0001 (book value per share "
         "within 0.01); other numbers within a relative 1e-6.",
-        "Unanswerable tasks have a null reference; a method that answers null everywhere scores only on that group.",
+        "Unanswerable tasks have a null reference, reached only by an explicit abstention (the llm-sql adapter returns null "
+        "only for a query result of exactly 'NOT_IN_DATABASE'); a method that abstains everywhere scores only on that group.",
     ]
