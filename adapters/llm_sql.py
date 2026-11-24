@@ -227,7 +227,7 @@ def run_task(req, usage):
     messages = [{"role": "user", "content": prompt}]
     err = ""
     for attempt in (0, 1):
-        reply = call_model(req["model"][0], messages, usage)
+        reply = call_model(model_of(req)[0], messages, usage)
         try:
             sql = extract_sql(reply)
             return {"answer": execute(state / "fsds.sqlite", sql, fmt), "sql": sql}
@@ -237,10 +237,17 @@ def run_task(req, usage):
     raise Fail("invalid_output", f"no usable query after repair turn: {err}", usage)
 
 
+def model_of(req):
+    """Controlled mode: the runner imposes req["model"]. Native mode: the config's settings pick it
+    (catalog settings are strings, so id and version are separate keys)."""
+    s = req.get("settings") or {}
+    return req.get("model") or ([s["model_id"], s["model_version"]] if "model_id" in s else None)
+
+
 def main():
     verb, req = sys.argv[1], json.load(sys.stdin)
     resp = {"status": "completed", "output": None, "adapter_version": ADAPTER_VERSION, "model_used": None}
-    usage = {"tin": 0, "tout": 0, "model": (req.get("model") or [""])[0]}
+    usage = {"tin": 0, "tout": 0, "model": (model_of(req) or [""])[0]}
     try:
         if verb == "build":
             build(req)
@@ -255,9 +262,9 @@ def main():
         resp["status"] = "runtime_failure"
         print(f"{verb}: {type(e).__name__}: {e}", file=sys.stderr)
     if usage["tin"] + usage["tout"] > 0:
-        usd, measured = price(req["model"][0], usage["tin"], usage["tout"])
+        usd, measured = price(model_of(req)[0], usage["tin"], usage["tout"])
         resp["cost"] = {"usd": usd, "tokens_in": usage["tin"], "tokens_out": usage["tout"], "measured": measured}
-        resp["model_used"] = [usage["model"], req["model"][1]]
+        resp["model_used"] = [usage["model"], model_of(req)[1]]
     print(json.dumps(resp))
 
 

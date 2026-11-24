@@ -12,3 +12,5 @@ network_hosts = ["api.anthropic.com"]
 secret_env = ["ANTHROPIC_API_KEY"]
 
 [settings]
+model_id = "claude-sonnet-5-5"
+model_version = "2026-11"

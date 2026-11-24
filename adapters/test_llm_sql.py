@@ -199,6 +199,16 @@ class AdapterTest(unittest.TestCase):
         self.assertNotIn("temperature", stub.requests[0])
         self.assertEqual(stub.requests[0]["model"], MODEL[0])
 
+    def test_native_mode_takes_model_from_settings(self):
+        self.build(["schema"])
+        stub = Stub([(200, sql_reply("SELECT 1"))])
+        self.addCleanup(stub.close)
+        r = self.call("run-task", {"state_dir": str(self.state), "task_id": "t", "settings": {"model_id": MODEL[0], "model_version": MODEL[1]},
+                                   "input": {"question": "q", "answer_format": "number"}}, stub)
+        self.assertEqual(r["status"], "completed")
+        self.assertEqual(r["model_used"], MODEL)
+        self.assertEqual(stub.requests[0]["model"], MODEL[0])
+
     def test_malformed_reply_is_invalid_output(self):
         self.build(["schema"])
         r, stub = self.run_task([(200, "I cannot do that.")] * 2)
